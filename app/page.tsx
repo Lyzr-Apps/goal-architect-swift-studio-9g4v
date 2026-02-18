@@ -17,8 +17,6 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Separator } from '@/components/ui/separator'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   FiTarget, FiTrendingUp, FiUsers, FiCalendar, FiCopy, FiDownload,
   FiRefreshCw, FiPlus, FiTrash2, FiChevronDown, FiChevronRight,
@@ -911,17 +909,13 @@ export default function Page() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-6 pb-6">
-                <ScrollArea className="h-auto max-h-[calc(100vh-200px)]">
-                  <div className="pr-3">
-                    <OutputPanel
-                      data={currentData}
-                      loading={loading}
-                      error={!sampleData ? error : null}
-                      onRetry={handleRetry}
-                      rawResponse={rawResponse}
-                    />
-                  </div>
-                </ScrollArea>
+                <OutputPanel
+                  data={currentData}
+                  loading={loading}
+                  error={!sampleData ? error : null}
+                  onRetry={handleRetry}
+                  rawResponse={rawResponse}
+                />
               </CardContent>
             </Card>
 
