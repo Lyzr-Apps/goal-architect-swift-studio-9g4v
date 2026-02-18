@@ -1,12 +1,13 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Inter, Montserrat } from 'next/font/google'
 import Script from 'next/script'
 import './globals.css'
 import { IframeLoggerInit } from '@/components/IframeLoggerInit'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import { AgentInterceptorProvider } from '@/components/AgentInterceptorProvider'
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
+const montserrat = Montserrat({ subsets: ['latin'], variable: '--font-montserrat', weight: ['400', '500', '600', '700'] })
 
 export const metadata: Metadata = {
   title: 'GroPact - AI Goal Architect',
@@ -23,7 +24,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className={`${inter.variable} ${montserrat.variable} ${inter.className}`}>
         <IframeLoggerInit />
         <ErrorBoundary>
           <AgentInterceptorProvider>

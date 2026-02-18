@@ -158,22 +158,22 @@ const EMPTY_PACT: PactForm = {
 // ── Helper Functions ────────────────────────────────────────────────
 function getDifficultyColor(difficulty: string): string {
   const d = (difficulty ?? '').toLowerCase()
-  if (d === 'easy') return 'bg-emerald-100 text-emerald-700 border-emerald-200'
+  if (d === 'easy') return 'bg-cyan-100 text-cyan-700 border-cyan-200'
   if (d === 'hard') return 'bg-red-100 text-red-700 border-red-200'
   return 'bg-amber-100 text-amber-700 border-amber-200'
 }
 
 function getDifficultyBorderColor(difficulty: string): string {
   const d = (difficulty ?? '').toLowerCase()
-  if (d === 'easy') return 'border-l-emerald-500'
+  if (d === 'easy') return 'border-l-cyan-500'
   if (d === 'hard') return 'border-l-red-500'
   return 'border-l-amber-500'
 }
 
 function getBehavioralStateLabel(state: string): { label: string; color: string; icon: string } {
   const s = (state ?? '').toLowerCase()
-  if (s === 'new') return { label: 'New User', color: 'bg-blue-100 text-blue-700 border-blue-200', icon: 'new' }
-  if (s === 'consistent') return { label: 'Consistent Performer', color: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: 'consistent' }
+  if (s === 'new') return { label: 'New User', color: 'bg-cyan-100 text-cyan-700 border-cyan-200', icon: 'new' }
+  if (s === 'consistent') return { label: 'Consistent Performer', color: 'bg-teal-100 text-teal-700 border-teal-200', icon: 'consistent' }
   if (s === 'inconsistent') return { label: 'Inconsistent Pattern', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: 'inconsistent' }
   if (s === 'struggling') return { label: 'Struggling', color: 'bg-red-100 text-red-700 border-red-200', icon: 'struggling' }
   if (s === 'recovery') return { label: 'Recovery Mode', color: 'bg-purple-100 text-purple-700 border-purple-200', icon: 'recovery' }
@@ -297,8 +297,8 @@ function NudgeCard({ nudge }: { nudge: Nudge }) {
 // ── Day Card ────────────────────────────────────────────────────────
 function DayCard({ day, index }: { day: WeeklyPlanDay; index: number }) {
   const dayColors = [
-    'bg-emerald-500', 'bg-teal-500', 'bg-cyan-500',
-    'bg-sky-500', 'bg-blue-500', 'bg-indigo-500', 'bg-violet-500'
+    'bg-cyan-500', 'bg-cyan-600', 'bg-teal-500',
+    'bg-cyan-500', 'bg-teal-600', 'bg-cyan-600', 'bg-teal-500'
   ]
   return (
     <div className="flex gap-3 group">
@@ -335,12 +335,12 @@ function DifficultyBar({ distribution }: { distribution: DifficultyDistribution 
   return (
     <div className="flex items-center gap-3">
       <div className="flex rounded-full overflow-hidden h-2 bg-muted flex-1">
-        {easy > 0 && <div className="bg-emerald-500 transition-all duration-500" style={{ width: `${(easy / total) * 100}%` }} />}
+        {easy > 0 && <div className="bg-cyan-500 transition-all duration-500" style={{ width: `${(easy / total) * 100}%` }} />}
         {medium > 0 && <div className="bg-amber-500 transition-all duration-500" style={{ width: `${(medium / total) * 100}%` }} />}
         {hard > 0 && <div className="bg-red-500 transition-all duration-500" style={{ width: `${(hard / total) * 100}%` }} />}
       </div>
       <div className="flex items-center gap-2 text-[10px] text-muted-foreground flex-shrink-0">
-        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />{easy}%</span>
+        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-cyan-500" />{easy}%</span>
         <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-500" />{medium}%</span>
         <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-red-500" />{hard}%</span>
       </div>
@@ -439,7 +439,7 @@ function OutputPanel({ data, loading, error, onRetry, rawResponse }: {
         </Badge>
         <div className="flex items-center gap-1.5">
           <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground" onClick={handleCopyJson}>
-            {copied ? <FiCheck className="w-3.5 h-3.5 text-emerald-600" /> : <FiCopy className="w-3.5 h-3.5" />}
+            {copied ? <FiCheck className="w-3.5 h-3.5 text-cyan-600" /> : <FiCopy className="w-3.5 h-3.5" />}
           </Button>
           <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground" onClick={handleExport}>
             <FiDownload className="w-3.5 h-3.5" />
@@ -453,7 +453,7 @@ function OutputPanel({ data, loading, error, onRetry, rawResponse }: {
       {/* Identity Affirmation */}
       {data?.identity_affirmation && (
         <div className="relative rounded-xl overflow-hidden">
-          <div className="absolute inset-0 forest-gradient opacity-[0.06]" />
+          <div className="absolute inset-0 gropact-gradient opacity-[0.06]" />
           <div className="relative p-5 border border-primary/15 rounded-xl">
             <div className="flex items-start gap-3">
               <FiStar className="w-4 h-4 text-primary flex-shrink-0 mt-1" />
@@ -697,7 +697,7 @@ export default function Page() {
           <div className="flex items-center gap-4">
             {/* Auto-synced profile indicator */}
             <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <div className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
               <span>{AUTO_PROFILE.name}</span>
               <Separator orientation="vertical" className="h-3" />
               <span>{AUTO_PROFILE.current_streak} day streak</span>
@@ -834,7 +834,7 @@ export default function Page() {
             <Button
               onClick={handleGenerate}
               disabled={loading}
-              className="w-full rounded-xl h-11 text-sm font-semibold forest-gradient text-white shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-all duration-300"
+              className="w-full rounded-xl h-11 text-sm font-semibold gropact-gradient text-white shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-all duration-300"
             >
               {loading ? (
                 <span className="flex items-center gap-2">
@@ -859,7 +859,7 @@ export default function Page() {
             {/* Powered by */}
             <div className="flex items-center justify-between py-2">
               <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                <div className={`w-1.5 h-1.5 rounded-full ${activeAgentId ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
+                <div className={`w-1.5 h-1.5 rounded-full ${activeAgentId ? 'bg-amber-500 animate-pulse' : 'bg-cyan-500'}`} />
                 <span>5 AI agents orchestrated by Weekly Plan Composer</span>
               </div>
             </div>
