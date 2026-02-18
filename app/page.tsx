@@ -5,24 +5,26 @@ import { callAIAgent } from '@/lib/aiAgent'
 import { copyToClipboard } from '@/lib/clipboard'
 import { useLyzrAgentEvents } from '@/lib/lyzrAgentEvents'
 import { AgentActivityPanel } from '@/components/AgentActivityPanel'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Separator } from '@/components/ui/separator'
-import { Progress } from '@/components/ui/progress'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { FiTarget, FiTrendingUp, FiUsers, FiCalendar, FiCopy, FiDownload, FiRefreshCw, FiPlus, FiTrash2, FiChevronDown, FiChevronRight, FiCheck, FiAlertCircle, FiStar, FiList } from 'react-icons/fi'
+import {
+  FiTarget, FiTrendingUp, FiUsers, FiCalendar, FiCopy, FiDownload,
+  FiRefreshCw, FiPlus, FiTrash2, FiChevronDown, FiChevronRight,
+  FiCheck, FiAlertCircle, FiStar, FiList, FiZap, FiSettings,
+  FiActivity, FiArrowRight, FiBookOpen
+} from 'react-icons/fi'
 
 // ── Constants ──────────────────────────────────────────────────────
 const AGENT_ID = '69951bcac0c7cf4934c52cc7'
@@ -78,38 +80,46 @@ interface Supporter {
   feedback: string
 }
 
-interface FormData {
+interface PactForm {
   title: string
   description: string
   category: string
   cadence: string
   startDate: string
   endDate: string
-  name: string
-  streak: number
-  lastCheckIn: string
-  completionRate: number
-  recentCheckIns: string
   supporters: Supporter[]
 }
 
+// User profile is auto-populated from the app backend
+interface UserProfile {
+  name: string
+  current_streak: number
+  last_check_in: string
+  completion_rate: number
+  recent_check_ins: string[]
+}
+
 // ── Sample Data ────────────────────────────────────────────────────
-const SAMPLE_FORM: FormData = {
+const SAMPLE_PACT: PactForm = {
   title: 'Run a 5K in Under 30 Minutes',
   description: 'Train consistently to improve my running pace and endurance, building up to completing a 5K race in under 30 minutes by the end of the month.',
   category: 'Fitness',
   cadence: 'Weekly',
   startDate: '2026-02-18',
   endDate: '2026-03-18',
-  name: 'Alex Chen',
-  streak: 4,
-  lastCheckIn: '2026-02-17',
-  completionRate: 72,
-  recentCheckIns: 'Ran 2.5K in 16 min, Completed interval training, Rested due to rain, Ran 3K in 19 min, Stretching and recovery',
   supporters: [
     { name: 'Jordan', feedback: 'Great progress on your intervals! Keep pushing the pace gradually.' },
     { name: 'Sam', feedback: 'Remember to warm up properly, you seemed tight last session.' }
   ]
+}
+
+// Simulated user profile (in production, this comes from the GroPact backend)
+const AUTO_PROFILE: UserProfile = {
+  name: 'Alex Chen',
+  current_streak: 4,
+  last_check_in: '2026-02-17',
+  completion_rate: 72,
+  recent_check_ins: ['Ran 2.5K in 16 min', 'Completed interval training', 'Rested due to rain', 'Ran 3K in 19 min', 'Stretching and recovery']
 }
 
 const SAMPLE_RESPONSE: WeeklyPlanOutput = {
@@ -147,75 +157,47 @@ const SAMPLE_RESPONSE: WeeklyPlanOutput = {
   }
 }
 
-const EMPTY_FORM: FormData = {
+const EMPTY_PACT: PactForm = {
   title: '',
   description: '',
   category: '',
   cadence: '',
   startDate: '',
   endDate: '',
-  name: '',
-  streak: 0,
-  lastCheckIn: '',
-  completionRate: 50,
-  recentCheckIns: '',
   supporters: [{ name: '', feedback: '' }]
 }
 
-// ── Markdown Renderer ──────────────────────────────────────────────
-function formatInline(text: string) {
-  const parts = text.split(/\*\*(.*?)\*\*/g)
-  if (parts.length === 1) return text
-  return parts.map((part, i) =>
-    i % 2 === 1 ? (
-      <strong key={i} className="font-semibold">{part}</strong>
-    ) : (
-      part
-    )
-  )
-}
-
-function renderMarkdown(text: string) {
-  if (!text) return null
-  return (
-    <div className="space-y-2">
-      {text.split('\n').map((line, i) => {
-        if (line.startsWith('### ')) return <h4 key={i} className="font-semibold text-sm mt-3 mb-1">{line.slice(4)}</h4>
-        if (line.startsWith('## ')) return <h3 key={i} className="font-semibold text-base mt-3 mb-1">{line.slice(3)}</h3>
-        if (line.startsWith('# ')) return <h2 key={i} className="font-bold text-lg mt-4 mb-2">{line.slice(2)}</h2>
-        if (line.startsWith('- ') || line.startsWith('* ')) return <li key={i} className="ml-4 list-disc text-sm">{formatInline(line.slice(2))}</li>
-        if (/^\d+\.\s/.test(line)) return <li key={i} className="ml-4 list-decimal text-sm">{formatInline(line.replace(/^\d+\.\s/, ''))}</li>
-        if (!line.trim()) return <div key={i} className="h-1" />
-        return <p key={i} className="text-sm leading-relaxed">{formatInline(line)}</p>
-      })}
-    </div>
-  )
-}
-
-// ── Difficulty Badge Helper ────────────────────────────────────────
+// ── Helper Functions ────────────────────────────────────────────────
 function getDifficultyColor(difficulty: string): string {
   const d = (difficulty ?? '').toLowerCase()
-  if (d === 'easy') return 'bg-emerald-100 text-emerald-800 border-emerald-200'
-  if (d === 'hard') return 'bg-red-100 text-red-800 border-red-200'
-  return 'bg-amber-100 text-amber-800 border-amber-200'
+  if (d === 'easy') return 'bg-emerald-100 text-emerald-700 border-emerald-200'
+  if (d === 'hard') return 'bg-red-100 text-red-700 border-red-200'
+  return 'bg-amber-100 text-amber-700 border-amber-200'
 }
 
-function getBehavioralStateLabel(state: string): { label: string; color: string } {
+function getDifficultyBorderColor(difficulty: string): string {
+  const d = (difficulty ?? '').toLowerCase()
+  if (d === 'easy') return 'border-l-emerald-500'
+  if (d === 'hard') return 'border-l-red-500'
+  return 'border-l-amber-500'
+}
+
+function getBehavioralStateLabel(state: string): { label: string; color: string; icon: string } {
   const s = (state ?? '').toLowerCase()
-  if (s === 'new') return { label: 'New User', color: 'bg-blue-100 text-blue-800 border-blue-200' }
-  if (s === 'consistent') return { label: 'Consistent Performer', color: 'bg-emerald-100 text-emerald-800 border-emerald-200' }
-  if (s === 'inconsistent') return { label: 'Inconsistent Pattern', color: 'bg-amber-100 text-amber-800 border-amber-200' }
-  if (s === 'struggling') return { label: 'Struggling', color: 'bg-red-100 text-red-800 border-red-200' }
-  if (s === 'recovery') return { label: 'Recovery Mode', color: 'bg-purple-100 text-purple-800 border-purple-200' }
-  return { label: state || 'Unknown', color: 'bg-gray-100 text-gray-800 border-gray-200' }
+  if (s === 'new') return { label: 'New User', color: 'bg-blue-100 text-blue-700 border-blue-200', icon: 'new' }
+  if (s === 'consistent') return { label: 'Consistent Performer', color: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: 'consistent' }
+  if (s === 'inconsistent') return { label: 'Inconsistent Pattern', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: 'inconsistent' }
+  if (s === 'struggling') return { label: 'Struggling', color: 'bg-red-100 text-red-700 border-red-200', icon: 'struggling' }
+  if (s === 'recovery') return { label: 'Recovery Mode', color: 'bg-purple-100 text-purple-700 border-purple-200', icon: 'recovery' }
+  return { label: state || 'Unknown', color: 'bg-gray-100 text-gray-700 border-gray-200', icon: '' }
 }
 
-// ── Parse Agent Response ───────────────────────────────────────────
+// ── Parse Agent Response ────────────────────────────────────────────
 function parseAgentResponse(result: any): WeeklyPlanOutput | null {
   try {
     let parsed = result?.response?.result
     if (typeof parsed === 'string') {
-      try { parsed = JSON.parse(parsed) } catch { /* keep as string */ }
+      try { parsed = JSON.parse(parsed) } catch { /* keep */ }
     }
     if (parsed && typeof parsed === 'object' && 'result' in parsed && !('behavioral_state' in parsed)) {
       parsed = (parsed as any).result
@@ -244,126 +226,118 @@ function parseAgentResponse(result: any): WeeklyPlanOutput | null {
   }
 }
 
-// ── Loading Skeleton Component ─────────────────────────────────────
+// ── Loading Skeleton ────────────────────────────────────────────────
 function OutputSkeleton() {
   return (
-    <div className="space-y-6 fade-in">
-      <div className="flex items-center gap-3 mb-2">
-        <Skeleton className="h-8 w-40 rounded-xl" />
-        <Skeleton className="h-6 w-24 rounded-full" />
-      </div>
-      <Skeleton className="h-24 w-full rounded-xl" />
-      <Skeleton className="h-12 w-full rounded-xl" />
+    <div className="space-y-5 fade-in">
+      <Skeleton className="h-20 w-full rounded-xl" />
+      <Skeleton className="h-10 w-full rounded-xl" />
       <div className="space-y-3">
-        <Skeleton className="h-6 w-32 rounded-lg" />
-        <Skeleton className="h-28 w-full rounded-xl" />
-        <Skeleton className="h-28 w-full rounded-xl" />
-        <Skeleton className="h-28 w-full rounded-xl" />
+        {[1,2,3].map(n => <Skeleton key={n} className="h-24 w-full rounded-xl" />)}
       </div>
       <div className="space-y-3">
-        <Skeleton className="h-6 w-24 rounded-lg" />
-        <Skeleton className="h-16 w-full rounded-xl" />
-        <Skeleton className="h-16 w-full rounded-xl" />
+        {[1,2].map(n => <Skeleton key={n} className="h-16 w-full rounded-xl" />)}
       </div>
       <div className="space-y-3">
-        <Skeleton className="h-6 w-28 rounded-lg" />
-        {[1,2,3,4,5,6,7].map(n => (
-          <Skeleton key={n} className="h-20 w-full rounded-xl" />
-        ))}
+        {[1,2,3,4,5,6,7].map(n => <Skeleton key={n} className="h-16 w-full rounded-xl" />)}
       </div>
-      <p className="text-sm text-muted-foreground text-center animate-pulse">Generating your personalized plan...</p>
+      <p className="text-sm text-muted-foreground text-center animate-pulse pt-2">Generating your personalized plan...</p>
     </div>
   )
 }
 
-// ── Micro Goal Card ────────────────────────────────────────────────
+// ── Micro Goal Card ─────────────────────────────────────────────────
 function MicroGoalCard({ goal, index }: { goal: MicroGoal; index: number }) {
   const [expanded, setExpanded] = useState(false)
   return (
-    <Card className="glass-card rounded-xl transition-all duration-300 hover:shadow-lg">
-      <CardContent className="p-4">
+    <div className={`rounded-xl border border-l-4 ${getDifficultyBorderColor(goal?.difficulty ?? '')} bg-card/80 backdrop-blur-sm transition-all duration-200 hover:shadow-md`}>
+      <div className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-2 flex-wrap">
-              <span className="text-xs font-medium text-muted-foreground">Goal {index + 1}</span>
-              <Badge variant="outline" className={`text-xs ${getDifficultyColor(goal?.difficulty ?? '')}`}>
+            <p className="text-sm font-medium text-foreground leading-relaxed">{goal?.goal_text ?? ''}</p>
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
+              <Badge variant="outline" className={`text-[10px] px-2 py-0 ${getDifficultyColor(goal?.difficulty ?? '')}`}>
                 {goal?.difficulty ?? 'N/A'}
               </Badge>
               {goal?.due_date && (
-                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                <span className="text-[11px] text-muted-foreground flex items-center gap-1">
                   <FiCalendar className="w-3 h-3" />
                   {goal.due_date}
                 </span>
               )}
+              {goal?.measurable_outcome && (
+                <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                  <FiTarget className="w-3 h-3 text-primary" />
+                  {goal.measurable_outcome}
+                </span>
+              )}
             </div>
-            <p className="text-sm font-medium text-foreground leading-relaxed">{goal?.goal_text ?? ''}</p>
-            {goal?.measurable_outcome && (
-              <div className="mt-2 flex items-center gap-1.5">
-                <FiTarget className="w-3.5 h-3.5 text-primary flex-shrink-0" />
-                <span className="text-xs text-muted-foreground">{goal.measurable_outcome}</span>
-              </div>
-            )}
           </div>
-          <Button variant="ghost" size="sm" className="flex-shrink-0 h-7 w-7 p-0" onClick={() => setExpanded(!expanded)}>
-            {expanded ? <FiChevronDown className="w-4 h-4" /> : <FiChevronRight className="w-4 h-4" />}
+          <Button variant="ghost" size="sm" className="flex-shrink-0 h-6 w-6 p-0 text-muted-foreground" onClick={() => setExpanded(!expanded)}>
+            {expanded ? <FiChevronDown className="w-3.5 h-3.5" /> : <FiChevronRight className="w-3.5 h-3.5" />}
           </Button>
         </div>
         {expanded && goal?.reasoning && (
-          <div className="mt-3 pt-3 border-t border-border">
-            <p className="text-xs font-medium text-muted-foreground mb-1">Reasoning</p>
-            <p className="text-sm text-foreground leading-relaxed">{goal.reasoning}</p>
+          <div className="mt-3 pt-3 border-t border-border/50">
+            <p className="text-xs text-muted-foreground leading-relaxed">{goal.reasoning}</p>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 
-// ── Nudge Card ─────────────────────────────────────────────────────
+// ── Nudge Card ──────────────────────────────────────────────────────
 function NudgeCard({ nudge }: { nudge: Nudge }) {
   return (
-    <Card className="glass-card rounded-xl transition-all duration-300 hover:shadow-lg">
-      <CardContent className="p-4">
-        <p className="text-sm text-foreground leading-relaxed mb-2">{nudge?.nudge_text ?? ''}</p>
+    <div className="flex items-start gap-3 p-3 rounded-xl bg-card/60 backdrop-blur-sm border border-border/50">
+      <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+        <FiZap className="w-3.5 h-3.5 text-accent" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm text-foreground leading-relaxed">{nudge?.nudge_text ?? ''}</p>
         {nudge?.behavioral_principle && (
-          <Badge variant="secondary" className="text-xs font-normal">
+          <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mt-1 inline-block">
             {nudge.behavioral_principle}
-          </Badge>
+          </span>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 
-// ── Day Card ───────────────────────────────────────────────────────
-function DayCard({ day }: { day: WeeklyPlanDay }) {
+// ── Day Card ────────────────────────────────────────────────────────
+function DayCard({ day, index }: { day: WeeklyPlanDay; index: number }) {
+  const dayColors = [
+    'bg-emerald-500', 'bg-teal-500', 'bg-cyan-500',
+    'bg-sky-500', 'bg-blue-500', 'bg-indigo-500', 'bg-violet-500'
+  ]
   return (
-    <Card className="glass-card rounded-xl transition-all duration-300 hover:shadow-lg">
-      <CardContent className="p-4">
-        <div className="flex items-center gap-2 mb-2">
-          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-xs font-semibold">
-            {day?.day ?? ''}
-          </Badge>
+    <div className="flex gap-3 group">
+      <div className="flex flex-col items-center">
+        <div className={`w-8 h-8 rounded-lg ${dayColors[index % 7]} flex items-center justify-center text-white text-xs font-bold`}>
+          {(day?.day ?? '').slice(0, 2)}
         </div>
-        <p className="text-sm font-medium text-foreground mb-2">{day?.micro_goal ?? ''}</p>
+        {index < 6 && <div className="w-px h-full bg-border/50 mt-1" />}
+      </div>
+      <div className="flex-1 pb-4">
+        <p className="text-xs font-semibold text-foreground mb-0.5">{day?.day ?? ''}</p>
+        <p className="text-sm text-foreground leading-relaxed">{day?.micro_goal ?? ''}</p>
         {day?.reminder && (
-          <div className="flex items-start gap-1.5 mb-2">
-            <FiAlertCircle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-muted-foreground leading-relaxed">{day.reminder}</p>
-          </div>
+          <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">{day.reminder}</p>
         )}
         {day?.supporter_prompt && (
-          <div className="flex items-start gap-1.5">
-            <FiUsers className="w-3.5 h-3.5 text-accent flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-muted-foreground leading-relaxed">{day.supporter_prompt}</p>
+          <div className="flex items-center gap-1 mt-1">
+            <FiUsers className="w-3 h-3 text-accent flex-shrink-0" />
+            <p className="text-[11px] text-accent leading-relaxed">{day.supporter_prompt}</p>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 
-// ── Difficulty Distribution Bar ────────────────────────────────────
+// ── Difficulty Distribution ─────────────────────────────────────────
 function DifficultyBar({ distribution }: { distribution: DifficultyDistribution | undefined }) {
   const easy = distribution?.easy_percent ?? 0
   const medium = distribution?.medium_percent ?? 0
@@ -371,50 +345,22 @@ function DifficultyBar({ distribution }: { distribution: DifficultyDistribution 
   const total = easy + medium + hard
   if (total === 0) return null
   return (
-    <div className="space-y-2">
-      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Difficulty Distribution</p>
-      <div className="flex rounded-full overflow-hidden h-3 bg-muted">
-        {easy > 0 && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="bg-emerald-500 transition-all duration-500" style={{ width: `${(easy / total) * 100}%` }} />
-              </TooltipTrigger>
-              <TooltipContent><p>Easy: {easy}%</p></TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
-        {medium > 0 && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="bg-amber-500 transition-all duration-500" style={{ width: `${(medium / total) * 100}%` }} />
-              </TooltipTrigger>
-              <TooltipContent><p>Medium: {medium}%</p></TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
-        {hard > 0 && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="bg-red-500 transition-all duration-500" style={{ width: `${(hard / total) * 100}%` }} />
-              </TooltipTrigger>
-              <TooltipContent><p>Hard: {hard}%</p></TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
+    <div className="flex items-center gap-3">
+      <div className="flex rounded-full overflow-hidden h-2 bg-muted flex-1">
+        {easy > 0 && <div className="bg-emerald-500 transition-all duration-500" style={{ width: `${(easy / total) * 100}%` }} />}
+        {medium > 0 && <div className="bg-amber-500 transition-all duration-500" style={{ width: `${(medium / total) * 100}%` }} />}
+        {hard > 0 && <div className="bg-red-500 transition-all duration-500" style={{ width: `${(hard / total) * 100}%` }} />}
       </div>
-      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" /> Easy {easy}%</span>
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500 inline-block" /> Medium {medium}%</span>
-        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500 inline-block" /> Hard {hard}%</span>
+      <div className="flex items-center gap-2 text-[10px] text-muted-foreground flex-shrink-0">
+        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />{easy}%</span>
+        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-500" />{medium}%</span>
+        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-red-500" />{hard}%</span>
       </div>
     </div>
   )
 }
 
-// ── Output Panel Component ─────────────────────────────────────────
+// ── Output Panel ────────────────────────────────────────────────────
 function OutputPanel({ data, loading, error, onRetry, rawResponse }: {
   data: WeeklyPlanOutput | null
   loading: boolean
@@ -449,44 +395,42 @@ function OutputPanel({ data, loading, error, onRetry, rawResponse }: {
     URL.revokeObjectURL(url)
   }, [data, rawResponse])
 
-  // Empty state
   if (!loading && !data && !error) {
     return (
-      <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-center px-6">
-        <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
-          <FiTarget className="w-8 h-8 text-primary" />
+      <div className="flex flex-col items-center justify-center min-h-[500px] text-center px-8">
+        <div className="w-20 h-20 rounded-2xl bg-primary/5 border border-primary/10 flex items-center justify-center mb-5">
+          <FiTarget className="w-9 h-9 text-primary/60" />
         </div>
-        <h3 className="text-lg font-semibold text-foreground mb-2">Ready to Architect Your Goals</h3>
-        <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
-          Submit your pact details to generate a personalized weekly plan with micro-goals, behavioral nudges, and supporter engagement prompts.
+        <h3 className="text-lg font-semibold text-foreground mb-2">Your Plan Awaits</h3>
+        <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">
+          Define your pact on the left and we will generate a personalized weekly plan tailored to your behavioral patterns and supporter network.
         </p>
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground/60 mt-6">
+          <FiActivity className="w-3.5 h-3.5" />
+          <span>User metrics are synced automatically</span>
+        </div>
       </div>
     )
   }
 
-  // Loading state
-  if (loading) {
-    return <OutputSkeleton />
-  }
+  if (loading) return <OutputSkeleton />
 
-  // Error state
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-full min-h-[300px] text-center px-6">
+      <div className="flex flex-col items-center justify-center min-h-[400px] text-center px-8">
         <div className="w-14 h-14 rounded-2xl bg-destructive/10 flex items-center justify-center mb-4">
           <FiAlertCircle className="w-7 h-7 text-destructive" />
         </div>
-        <h3 className="text-lg font-semibold text-foreground mb-2">Something went wrong</h3>
+        <h3 className="text-base font-semibold text-foreground mb-2">Something went wrong</h3>
         <p className="text-sm text-muted-foreground max-w-sm mb-4 leading-relaxed">{error}</p>
-        <Button onClick={onRetry} variant="outline" className="gap-2 rounded-xl">
-          <FiRefreshCw className="w-4 h-4" />
+        <Button onClick={onRetry} variant="outline" size="sm" className="gap-2 rounded-xl">
+          <FiRefreshCw className="w-3.5 h-3.5" />
           Try Again
         </Button>
       </div>
     )
   }
 
-  // Data state
   if (!data) return null
 
   const stateInfo = getBehavioralStateLabel(data.behavioral_state ?? '')
@@ -495,86 +439,55 @@ function OutputPanel({ data, loading, error, onRetry, rawResponse }: {
   const weeklyPlan = Array.isArray(data?.weekly_plan) ? data.weekly_plan : []
 
   return (
-    <div className="space-y-5 fade-in-up">
-      {/* Header: Behavioral State + Actions */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <Badge className={`${stateInfo.color} rounded-full px-3 py-1 text-xs font-semibold border`}>
-            {stateInfo.label}
-          </Badge>
-        </div>
-        <div className="flex items-center gap-2">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-1.5 rounded-xl text-xs h-8" onClick={handleCopyJson}>
-                  {copied ? <FiCheck className="w-3.5 h-3.5 text-emerald-600" /> : <FiCopy className="w-3.5 h-3.5" />}
-                  {copied ? 'Copied' : 'Copy JSON'}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent><p>Copy full response as JSON</p></TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-1.5 rounded-xl text-xs h-8" onClick={handleExport}>
-                  <FiDownload className="w-3.5 h-3.5" />
-                  Export
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent><p>Download as .json file</p></TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-1.5 rounded-xl text-xs h-8" onClick={onRetry}>
-                  <FiRefreshCw className="w-3.5 h-3.5" />
-                  Regenerate
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent><p>Regenerate with same inputs</p></TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+    <div className="space-y-6 fade-in-up">
+      {/* Top bar: state + actions */}
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <Badge className={`${stateInfo.color} rounded-full px-3 py-1 text-[11px] font-semibold border`}>
+          {stateInfo.label}
+        </Badge>
+        <div className="flex items-center gap-1.5">
+          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground" onClick={handleCopyJson}>
+            {copied ? <FiCheck className="w-3.5 h-3.5 text-emerald-600" /> : <FiCopy className="w-3.5 h-3.5" />}
+          </Button>
+          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground" onClick={handleExport}>
+            <FiDownload className="w-3.5 h-3.5" />
+          </Button>
+          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground" onClick={onRetry}>
+            <FiRefreshCw className="w-3.5 h-3.5" />
+          </Button>
         </div>
       </div>
 
       {/* Identity Affirmation */}
       {data?.identity_affirmation && (
-        <Card className="rounded-xl border-primary/20 bg-primary/5 shadow-sm">
-          <CardContent className="p-5">
+        <div className="relative rounded-xl overflow-hidden">
+          <div className="absolute inset-0 forest-gradient opacity-[0.06]" />
+          <div className="relative p-5 border border-primary/15 rounded-xl">
             <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <FiStar className="w-4 h-4 text-primary" />
-              </div>
+              <FiStar className="w-4 h-4 text-primary flex-shrink-0 mt-1" />
               <div>
-                <p className="text-xs font-semibold text-primary uppercase tracking-wide mb-1.5">Identity Affirmation</p>
-                <p className="text-sm text-foreground leading-relaxed italic">&ldquo;{data.identity_affirmation}&rdquo;</p>
+                <p className="text-[10px] font-semibold text-primary uppercase tracking-widest mb-1.5">Your Identity</p>
+                <p className="text-sm text-foreground leading-relaxed italic">{data.identity_affirmation}</p>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
-      {/* Difficulty Distribution */}
-      <Card className="glass-card rounded-xl">
-        <CardContent className="p-4">
-          <DifficultyBar distribution={data?.difficulty_distribution} />
-        </CardContent>
-      </Card>
+      {/* Difficulty Distribution - compact */}
+      <DifficultyBar distribution={data?.difficulty_distribution} />
 
-      {/* Micro-Goals Section */}
+      {/* Micro-Goals */}
       <Collapsible open={microGoalsOpen} onOpenChange={setMicroGoalsOpen}>
         <CollapsibleTrigger asChild>
-          <button className="flex items-center gap-2 w-full text-left group py-1">
+          <button className="flex items-center gap-2 w-full text-left py-1 group">
             {microGoalsOpen ? <FiChevronDown className="w-4 h-4 text-muted-foreground" /> : <FiChevronRight className="w-4 h-4 text-muted-foreground" />}
             <span className="text-sm font-semibold text-foreground">Micro-Goals</span>
-            <Badge variant="secondary" className="text-xs rounded-full">{microGoals.length}</Badge>
+            <Badge variant="secondary" className="text-[10px] rounded-full h-5 px-1.5">{microGoals.length}</Badge>
           </button>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="space-y-3 mt-3">
+          <div className="space-y-2 mt-2">
             {microGoals.map((goal, i) => (
               <MicroGoalCard key={i} goal={goal} index={i} />
             ))}
@@ -582,17 +495,17 @@ function OutputPanel({ data, loading, error, onRetry, rawResponse }: {
         </CollapsibleContent>
       </Collapsible>
 
-      {/* Nudges Section */}
+      {/* Nudges */}
       <Collapsible open={nudgesOpen} onOpenChange={setNudgesOpen}>
         <CollapsibleTrigger asChild>
-          <button className="flex items-center gap-2 w-full text-left group py-1">
+          <button className="flex items-center gap-2 w-full text-left py-1 group">
             {nudgesOpen ? <FiChevronDown className="w-4 h-4 text-muted-foreground" /> : <FiChevronRight className="w-4 h-4 text-muted-foreground" />}
-            <span className="text-sm font-semibold text-foreground">Behavioral Nudges</span>
-            <Badge variant="secondary" className="text-xs rounded-full">{nudges.length}</Badge>
+            <span className="text-sm font-semibold text-foreground">Nudges</span>
+            <Badge variant="secondary" className="text-[10px] rounded-full h-5 px-1.5">{nudges.length}</Badge>
           </button>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="space-y-3 mt-3">
+          <div className="space-y-2 mt-2">
             {nudges.map((nudge, i) => (
               <NudgeCard key={i} nudge={nudge} />
             ))}
@@ -600,64 +513,67 @@ function OutputPanel({ data, loading, error, onRetry, rawResponse }: {
         </CollapsibleContent>
       </Collapsible>
 
-      {/* Weekly Plan Section */}
+      {/* Weekly Plan */}
       <Collapsible open={weeklyPlanOpen} onOpenChange={setWeeklyPlanOpen}>
         <CollapsibleTrigger asChild>
-          <button className="flex items-center gap-2 w-full text-left group py-1">
+          <button className="flex items-center gap-2 w-full text-left py-1 group">
             {weeklyPlanOpen ? <FiChevronDown className="w-4 h-4 text-muted-foreground" /> : <FiChevronRight className="w-4 h-4 text-muted-foreground" />}
             <span className="text-sm font-semibold text-foreground">Weekly Plan</span>
-            <Badge variant="secondary" className="text-xs rounded-full">{weeklyPlan.length} days</Badge>
+            <Badge variant="secondary" className="text-[10px] rounded-full h-5 px-1.5">{weeklyPlan.length} days</Badge>
           </button>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="space-y-3 mt-3">
+          <div className="mt-3 pl-1">
             {weeklyPlan.map((day, i) => (
-              <DayCard key={i} day={day} />
+              <DayCard key={i} day={day} index={i} />
             ))}
           </div>
         </CollapsibleContent>
       </Collapsible>
 
-      {/* Explanations Section */}
+      {/* Explanations */}
       {data?.explanations && (
-        <div>
-          <p className="text-sm font-semibold text-foreground mb-3">Insights & Explanations</p>
-          <Accordion type="multiple" className="space-y-2">
-            {data.explanations.pact_interpretation && (
-              <AccordionItem value="pact" className="glass-card rounded-xl border px-4">
-                <AccordionTrigger className="text-sm font-medium py-3 hover:no-underline">Pact Interpretation</AccordionTrigger>
-                <AccordionContent className="pb-4">
-                  {renderMarkdown(data.explanations.pact_interpretation)}
-                </AccordionContent>
-              </AccordionItem>
-            )}
-            {data.explanations.behavior_insights && (
-              <AccordionItem value="behavior" className="glass-card rounded-xl border px-4">
-                <AccordionTrigger className="text-sm font-medium py-3 hover:no-underline">User Behavior Insights</AccordionTrigger>
-                <AccordionContent className="pb-4">
-                  {renderMarkdown(data.explanations.behavior_insights)}
-                </AccordionContent>
-              </AccordionItem>
-            )}
-            {data.explanations.supporter_insights && (
-              <AccordionItem value="supporter" className="glass-card rounded-xl border px-4">
-                <AccordionTrigger className="text-sm font-medium py-3 hover:no-underline">Supporter Insights</AccordionTrigger>
-                <AccordionContent className="pb-4">
-                  {renderMarkdown(data.explanations.supporter_insights)}
-                </AccordionContent>
-              </AccordionItem>
-            )}
-          </Accordion>
-        </div>
+        <Accordion type="multiple" className="space-y-1.5">
+          {data.explanations.pact_interpretation && (
+            <AccordionItem value="pact" className="rounded-xl border bg-card/50 px-4">
+              <AccordionTrigger className="text-xs font-medium py-2.5 hover:no-underline text-muted-foreground">
+                <span className="flex items-center gap-1.5"><FiBookOpen className="w-3 h-3" /> Pact Interpretation</span>
+              </AccordionTrigger>
+              <AccordionContent className="pb-3 text-sm leading-relaxed text-foreground">
+                {data.explanations.pact_interpretation}
+              </AccordionContent>
+            </AccordionItem>
+          )}
+          {data.explanations.behavior_insights && (
+            <AccordionItem value="behavior" className="rounded-xl border bg-card/50 px-4">
+              <AccordionTrigger className="text-xs font-medium py-2.5 hover:no-underline text-muted-foreground">
+                <span className="flex items-center gap-1.5"><FiActivity className="w-3 h-3" /> Behavior Insights</span>
+              </AccordionTrigger>
+              <AccordionContent className="pb-3 text-sm leading-relaxed text-foreground">
+                {data.explanations.behavior_insights}
+              </AccordionContent>
+            </AccordionItem>
+          )}
+          {data.explanations.supporter_insights && (
+            <AccordionItem value="supporter" className="rounded-xl border bg-card/50 px-4">
+              <AccordionTrigger className="text-xs font-medium py-2.5 hover:no-underline text-muted-foreground">
+                <span className="flex items-center gap-1.5"><FiUsers className="w-3 h-3" /> Supporter Insights</span>
+              </AccordionTrigger>
+              <AccordionContent className="pb-3 text-sm leading-relaxed text-foreground">
+                {data.explanations.supporter_insights}
+              </AccordionContent>
+            </AccordionItem>
+          )}
+        </Accordion>
       )}
     </div>
   )
 }
 
-// ── Main Page Component ────────────────────────────────────────────
+// ── Main Page ───────────────────────────────────────────────────────
 export default function Page() {
-  const [formData, setFormData] = useState<FormData>({ ...EMPTY_FORM })
-  const [jsonMode, setJsonMode] = useState(false)
+  const [pactForm, setPactForm] = useState<PactForm>({ ...EMPTY_PACT })
+  const [advancedOpen, setAdvancedOpen] = useState(false)
   const [jsonText, setJsonText] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -666,132 +582,68 @@ export default function Page() {
   const [sampleData, setSampleData] = useState(false)
   const [activeAgentId, setActiveAgentId] = useState<string | null>(null)
   const [sessionId, setSessionId] = useState<string | null>(null)
-  const lastFormRef = useRef<FormData | null>(null)
 
   const agentActivity = useLyzrAgentEvents(sessionId ?? undefined)
 
-  // Current form data (respects sample mode)
-  const currentForm = sampleData ? SAMPLE_FORM : formData
+  const currentPact = sampleData ? SAMPLE_PACT : pactForm
   const currentData = sampleData && !planData ? SAMPLE_RESPONSE : planData
 
-  // Toggle sample data
   const handleSampleToggle = useCallback((checked: boolean) => {
     setSampleData(checked)
-    if (!checked) {
-      // turning off sample data, keep any real plan data
-    }
   }, [])
 
-  // Update form field
-  const updateField = useCallback(<K extends keyof FormData>(key: K, value: FormData[K]) => {
-    setFormData(prev => ({ ...prev, [key]: value }))
+  const updateField = useCallback(<K extends keyof PactForm>(key: K, value: PactForm[K]) => {
+    setPactForm(prev => ({ ...prev, [key]: value }))
   }, [])
 
-  // Supporter management
   const addSupporter = useCallback(() => {
-    setFormData(prev => ({
+    setPactForm(prev => ({
       ...prev,
       supporters: [...prev.supporters, { name: '', feedback: '' }]
     }))
   }, [])
 
   const removeSupporter = useCallback((index: number) => {
-    setFormData(prev => ({
+    setPactForm(prev => ({
       ...prev,
       supporters: prev.supporters.filter((_, i) => i !== index)
     }))
   }, [])
 
   const updateSupporter = useCallback((index: number, field: 'name' | 'feedback', value: string) => {
-    setFormData(prev => ({
+    setPactForm(prev => ({
       ...prev,
       supporters: prev.supporters.map((s, i) => i === index ? { ...s, [field]: value } : s)
     }))
   }, [])
 
-  // JSON mode toggle
-  const handleJsonToggle = useCallback((checked: boolean) => {
-    if (checked) {
-      // Switching to JSON mode, populate textarea with current form data
-      const fd = sampleData ? SAMPLE_FORM : formData
-      const payload = {
-        pact: {
-          title: fd.title,
-          description: fd.description,
-          category: fd.category,
-          cadence: fd.cadence,
-          start_date: fd.startDate,
-          end_date: fd.endDate
-        },
-        user_profile: {
-          name: fd.name,
-          current_streak: fd.streak,
-          last_check_in: fd.lastCheckIn,
-          completion_rate: fd.completionRate,
-          recent_check_ins: fd.recentCheckIns.split(',').map(s => s.trim()).filter(Boolean)
-        },
-        supporter_feedback: fd.supporters.map(s => ({
+  // Build full payload merging user-entered pact with auto-populated profile
+  const buildPayload = useCallback((pact: PactForm) => {
+    return {
+      pact: {
+        title: pact.title,
+        description: pact.description,
+        category: pact.category,
+        cadence: pact.cadence,
+        start_date: pact.startDate,
+        end_date: pact.endDate
+      },
+      user_profile: {
+        name: AUTO_PROFILE.name,
+        current_streak: AUTO_PROFILE.current_streak,
+        last_check_in: AUTO_PROFILE.last_check_in,
+        completion_rate: AUTO_PROFILE.completion_rate,
+        recent_check_ins: AUTO_PROFILE.recent_check_ins
+      },
+      supporter_feedback: pact.supporters
+        .filter(s => s.name.trim() || s.feedback.trim())
+        .map(s => ({
           supporter_name: s.name,
           feedback: s.feedback
         }))
-      }
-      setJsonText(JSON.stringify(payload, null, 2))
-    } else {
-      // Switching back to form mode, try to parse JSON
-      try {
-        const parsed = JSON.parse(jsonText)
-        setFormData(prev => ({
-          ...prev,
-          title: parsed?.pact?.title ?? prev.title,
-          description: parsed?.pact?.description ?? prev.description,
-          category: parsed?.pact?.category ?? prev.category,
-          cadence: parsed?.pact?.cadence ?? prev.cadence,
-          startDate: parsed?.pact?.start_date ?? prev.startDate,
-          endDate: parsed?.pact?.end_date ?? prev.endDate,
-          name: parsed?.user_profile?.name ?? prev.name,
-          streak: parsed?.user_profile?.current_streak ?? prev.streak,
-          lastCheckIn: parsed?.user_profile?.last_check_in ?? prev.lastCheckIn,
-          completionRate: parsed?.user_profile?.completion_rate ?? prev.completionRate,
-          recentCheckIns: Array.isArray(parsed?.user_profile?.recent_check_ins)
-            ? parsed.user_profile.recent_check_ins.join(', ')
-            : prev.recentCheckIns,
-          supporters: Array.isArray(parsed?.supporter_feedback)
-            ? parsed.supporter_feedback.map((s: any) => ({ name: s?.supporter_name ?? '', feedback: s?.feedback ?? '' }))
-            : prev.supporters
-        }))
-      } catch {
-        // Invalid JSON, keep form as-is
-      }
-    }
-    setJsonMode(checked)
-  }, [formData, jsonText, sampleData])
-
-  // Build message payload
-  const buildPayload = useCallback((fd: FormData) => {
-    return {
-      pact: {
-        title: fd.title,
-        description: fd.description,
-        category: fd.category,
-        cadence: fd.cadence,
-        start_date: fd.startDate,
-        end_date: fd.endDate
-      },
-      user_profile: {
-        name: fd.name,
-        current_streak: fd.streak,
-        last_check_in: fd.lastCheckIn,
-        completion_rate: fd.completionRate,
-        recent_check_ins: fd.recentCheckIns.split(',').map(s => s.trim()).filter(Boolean)
-      },
-      supporter_feedback: fd.supporters.map(s => ({
-        supporter_name: s.name,
-        feedback: s.feedback
-      }))
     }
   }, [])
 
-  // Generate plan
   const handleGenerate = useCallback(async () => {
     setLoading(true)
     setError(null)
@@ -799,14 +651,13 @@ export default function Page() {
     setRawResponse(null)
     setActiveAgentId(AGENT_ID)
 
-    const fd = sampleData ? SAMPLE_FORM : formData
-    lastFormRef.current = fd
+    const pact = sampleData ? SAMPLE_PACT : pactForm
 
     let message: string
-    if (jsonMode) {
+    if (advancedOpen && jsonText.trim()) {
       message = jsonText
     } else {
-      const payload = buildPayload(fd)
+      const payload = buildPayload(pact)
       message = JSON.stringify(payload)
     }
 
@@ -835,366 +686,233 @@ export default function Page() {
       setLoading(false)
       setActiveAgentId(null)
     }
-  }, [formData, sampleData, jsonMode, jsonText, buildPayload])
+  }, [pactForm, sampleData, advancedOpen, jsonText, buildPayload])
 
-  // Retry with same inputs
   const handleRetry = useCallback(() => {
     handleGenerate()
   }, [handleGenerate])
 
   return (
     <div className="min-h-screen">
-      {/* Fixed Header */}
+      {/* Header */}
       <header className="sticky top-0 z-40 glass-card-strong border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl forest-gradient flex items-center justify-center shadow-md shadow-primary/20">
-              <FiTarget className="w-5 h-5 text-white" />
+            <div className="w-8 h-8 rounded-lg forest-gradient flex items-center justify-center shadow-sm">
+              <FiTarget className="w-4 h-4 text-white" />
             </div>
             <div>
-              <h1 className="text-lg font-semibold text-foreground tracking-tight leading-none">GroPact</h1>
-              <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">AI Goal Architect</p>
+              <h1 className="text-base font-semibold text-foreground tracking-tight leading-none">GroPact</h1>
+              <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-widest">AI Goal Architect</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <Label htmlFor="sample-toggle" className="text-xs text-muted-foreground font-medium cursor-pointer">Sample Data</Label>
-            <Switch id="sample-toggle" checked={sampleData} onCheckedChange={handleSampleToggle} />
+          <div className="flex items-center gap-4">
+            {/* Auto-synced profile indicator */}
+            <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <span>{AUTO_PROFILE.name}</span>
+              <Separator orientation="vertical" className="h-3" />
+              <span>{AUTO_PROFILE.current_streak} day streak</span>
+              <Separator orientation="vertical" className="h-3" />
+              <span>{AUTO_PROFILE.completion_rate}% rate</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="sample-toggle" className="text-xs text-muted-foreground cursor-pointer">Demo</Label>
+              <Switch id="sample-toggle" checked={sampleData} onCheckedChange={handleSampleToggle} />
+            </div>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* ── Left Panel: Input ── */}
-          <div className="space-y-5">
-            {/* Form/JSON Toggle */}
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-foreground">Configure Your Pact</h2>
-              <div className="flex items-center gap-2">
-                <Label htmlFor="json-toggle" className="text-xs text-muted-foreground cursor-pointer">
-                  {jsonMode ? 'JSON Editor' : 'Form View'}
-                </Label>
-                <Switch id="json-toggle" checked={jsonMode} onCheckedChange={handleJsonToggle} />
-              </div>
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+
+          {/* ── Left Panel: Input (2 cols) ── */}
+          <div className="lg:col-span-2 space-y-4">
+            <div>
+              <h2 className="text-base font-semibold text-foreground">Define Your Pact</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">Your behavioral data syncs automatically from the app.</p>
             </div>
 
-            {jsonMode ? (
-              /* JSON Editor Mode */
-              <Card className="glass-card rounded-xl">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                    <FiList className="w-4 h-4 text-primary" />
-                    JSON Payload Editor
-                  </CardTitle>
-                  <CardDescription className="text-xs">Edit the JSON payload directly. Switch back to form view to populate fields.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Textarea
-                    value={jsonText}
-                    onChange={(e) => setJsonText(e.target.value)}
-                    className="font-mono text-xs min-h-[500px] rounded-xl bg-background/50"
-                    placeholder='{"pact": {"title": "..."}, "user_profile": {...}, "supporter_feedback": [...]}'
-                  />
-                </CardContent>
-              </Card>
-            ) : (
-              /* Form Mode */
-              <ScrollArea className="h-auto">
-                <div className="space-y-5">
-                  {/* Pact Details Card */}
-                  <Card className="glass-card rounded-xl">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                        <FiTarget className="w-4 h-4 text-primary" />
-                        Pact Details
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="space-y-1.5">
-                        <Label htmlFor="title" className="text-xs font-medium">Title</Label>
-                        <Input
-                          id="title"
-                          placeholder="e.g., Run a 5K in Under 30 Minutes"
-                          value={currentForm.title}
-                          onChange={(e) => updateField('title', e.target.value)}
-                          className="rounded-xl bg-background/50"
-                          disabled={sampleData}
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label htmlFor="description" className="text-xs font-medium">Description</Label>
-                        <Textarea
-                          id="description"
-                          placeholder="Describe your goal in detail..."
-                          value={currentForm.description}
-                          onChange={(e) => updateField('description', e.target.value)}
-                          rows={3}
-                          className="rounded-xl bg-background/50"
-                          disabled={sampleData}
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-medium">Category</Label>
-                          <Select
-                            value={currentForm.category}
-                            onValueChange={(val) => updateField('category', val)}
-                            disabled={sampleData}
-                          >
-                            <SelectTrigger className="rounded-xl bg-background/50">
-                              <SelectValue placeholder="Select..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {CATEGORIES.map(cat => (
-                                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-medium">Cadence</Label>
-                          <Select
-                            value={currentForm.cadence}
-                            onValueChange={(val) => updateField('cadence', val)}
-                            disabled={sampleData}
-                          >
-                            <SelectTrigger className="rounded-xl bg-background/50">
-                              <SelectValue placeholder="Select..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {CADENCES.map(c => (
-                                <SelectItem key={c} value={c}>{c}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1.5">
-                          <Label htmlFor="startDate" className="text-xs font-medium">Start Date</Label>
-                          <Input
-                            id="startDate"
-                            type="date"
-                            value={currentForm.startDate}
-                            onChange={(e) => updateField('startDate', e.target.value)}
-                            className="rounded-xl bg-background/50"
-                            disabled={sampleData}
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label htmlFor="endDate" className="text-xs font-medium">End Date</Label>
-                          <Input
-                            id="endDate"
-                            type="date"
-                            value={currentForm.endDate}
-                            onChange={(e) => updateField('endDate', e.target.value)}
-                            className="rounded-xl bg-background/50"
-                            disabled={sampleData}
-                          />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* User Profile Card */}
-                  <Card className="glass-card rounded-xl">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                        <FiTrendingUp className="w-4 h-4 text-primary" />
-                        User Profile
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="space-y-1.5">
-                        <Label htmlFor="name" className="text-xs font-medium">Name</Label>
-                        <Input
-                          id="name"
-                          placeholder="Your name"
-                          value={currentForm.name}
-                          onChange={(e) => updateField('name', e.target.value)}
-                          className="rounded-xl bg-background/50"
-                          disabled={sampleData}
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1.5">
-                          <Label htmlFor="streak" className="text-xs font-medium">Current Streak</Label>
-                          <Input
-                            id="streak"
-                            type="number"
-                            min={0}
-                            value={currentForm.streak}
-                            onChange={(e) => updateField('streak', parseInt(e.target.value) || 0)}
-                            className="rounded-xl bg-background/50"
-                            disabled={sampleData}
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label htmlFor="lastCheckIn" className="text-xs font-medium">Last Check-in</Label>
-                          <Input
-                            id="lastCheckIn"
-                            type="date"
-                            value={currentForm.lastCheckIn}
-                            onChange={(e) => updateField('lastCheckIn', e.target.value)}
-                            className="rounded-xl bg-background/50"
-                            disabled={sampleData}
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-xs font-medium">Completion Rate</Label>
-                          <span className="text-xs font-semibold text-primary">{currentForm.completionRate}%</span>
-                        </div>
-                        <Slider
-                          value={[currentForm.completionRate]}
-                          onValueChange={(val) => updateField('completionRate', val[0])}
-                          min={0}
-                          max={100}
-                          step={1}
-                          className="w-full"
-                          disabled={sampleData}
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label htmlFor="recentCheckIns" className="text-xs font-medium">Recent Check-ins</Label>
-                        <Textarea
-                          id="recentCheckIns"
-                          placeholder="Comma-separated entries (e.g., Ran 3K, Did yoga, Rest day)"
-                          value={currentForm.recentCheckIns}
-                          onChange={(e) => updateField('recentCheckIns', e.target.value)}
-                          rows={2}
-                          className="rounded-xl bg-background/50"
-                          disabled={sampleData}
-                        />
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Supporter Feedback Card */}
-                  <Card className="glass-card rounded-xl">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                          <FiUsers className="w-4 h-4 text-primary" />
-                          Supporter Feedback
-                        </CardTitle>
-                        {!sampleData && (
-                          <Button variant="ghost" size="sm" className="gap-1 text-xs h-7 rounded-xl text-primary hover:text-primary" onClick={addSupporter}>
-                            <FiPlus className="w-3.5 h-3.5" />
-                            Add
-                          </Button>
-                        )}
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      {(currentForm.supporters ?? []).map((supporter, index) => (
-                        <div key={index} className="space-y-2 p-3 rounded-xl bg-background/30 border border-border/50">
-                          <div className="flex items-center gap-2">
-                            <Input
-                              placeholder="Supporter name"
-                              value={supporter.name}
-                              onChange={(e) => updateSupporter(index, 'name', e.target.value)}
-                              className="rounded-xl bg-background/50 flex-1"
-                              disabled={sampleData}
-                            />
-                            {!sampleData && currentForm.supporters.length > 1 && (
-                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive" onClick={() => removeSupporter(index)}>
-                                <FiTrash2 className="w-3.5 h-3.5" />
-                              </Button>
-                            )}
-                          </div>
-                          <Textarea
-                            placeholder="Their feedback..."
-                            value={supporter.feedback}
-                            onChange={(e) => updateSupporter(index, 'feedback', e.target.value)}
-                            rows={2}
-                            className="rounded-xl bg-background/50"
-                            disabled={sampleData}
-                          />
-                        </div>
-                      ))}
-                    </CardContent>
-                  </Card>
-                </div>
-              </ScrollArea>
-            )}
-
-            {/* Generate Button + Error */}
-            <div className="space-y-3">
-              <Button
-                onClick={handleGenerate}
-                disabled={loading}
-                className="w-full rounded-xl h-11 text-sm font-semibold forest-gradient text-white shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-all duration-300"
-              >
-                {loading ? (
-                  <span className="flex items-center gap-2">
-                    <FiRefreshCw className="w-4 h-4 animate-spin" />
-                    Generating Plan...
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-2">
-                    <FiTarget className="w-4 h-4" />
-                    Generate Plan
-                  </span>
-                )}
-              </Button>
-              {error && !loading && (
-                <div className="flex items-start gap-2 p-3 rounded-xl bg-destructive/5 border border-destructive/20 text-sm text-destructive">
-                  <FiAlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                  <span>{error}</span>
-                </div>
-              )}
-            </div>
-
-            {/* Agent Info */}
+            {/* Pact Details */}
             <Card className="glass-card rounded-xl">
-              <CardContent className="p-4">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Powered By</p>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${activeAgentId === AGENT_ID ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
-                      <span className="text-xs font-medium text-foreground">Weekly Plan Composer</span>
-                    </div>
-                    <Badge variant="secondary" className="text-[10px]">Manager</Badge>
+              <CardContent className="p-5 space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="title" className="text-xs font-medium">What is your pact?</Label>
+                  <Input
+                    id="title"
+                    placeholder="e.g., Run a 5K in Under 30 Minutes"
+                    value={currentPact.title}
+                    onChange={(e) => updateField('title', e.target.value)}
+                    className="rounded-xl bg-background/50 h-10"
+                    disabled={sampleData}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="description" className="text-xs font-medium">Describe your commitment</Label>
+                  <Textarea
+                    id="description"
+                    placeholder="What does success look like? Why does this matter to you?"
+                    value={currentPact.description}
+                    onChange={(e) => updateField('description', e.target.value)}
+                    rows={3}
+                    className="rounded-xl bg-background/50 resize-none"
+                    disabled={sampleData}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Category</Label>
+                    <Select value={currentPact.category} onValueChange={(val) => updateField('category', val)} disabled={sampleData}>
+                      <SelectTrigger className="rounded-xl bg-background/50 h-9 text-xs">
+                        <SelectValue placeholder="Select..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <div className="pl-4 space-y-1.5 text-[11px] text-muted-foreground">
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40" />
-                      Pact Interpreter
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40" />
-                      User Behavior Analyst
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40" />
-                      Supporter Insight Agent
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40" />
-                      Micro Goal & Nudge Generator
-                    </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium">Cadence</Label>
+                    <Select value={currentPact.cadence} onValueChange={(val) => updateField('cadence', val)} disabled={sampleData}>
+                      <SelectTrigger className="rounded-xl bg-background/50 h-9 text-xs">
+                        <SelectValue placeholder="Select..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CADENCES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="startDate" className="text-xs font-medium">Start</Label>
+                    <Input id="startDate" type="date" value={currentPact.startDate} onChange={(e) => updateField('startDate', e.target.value)} className="rounded-xl bg-background/50 h-9 text-xs" disabled={sampleData} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="endDate" className="text-xs font-medium">End</Label>
+                    <Input id="endDate" type="date" value={currentPact.endDate} onChange={(e) => updateField('endDate', e.target.value)} className="rounded-xl bg-background/50 h-9 text-xs" disabled={sampleData} />
                   </div>
                 </div>
               </CardContent>
             </Card>
+
+            {/* Supporters */}
+            <Card className="glass-card rounded-xl">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <FiUsers className="w-4 h-4 text-primary" />
+                    <span className="text-xs font-semibold text-foreground">Supporters</span>
+                  </div>
+                  {!sampleData && (
+                    <Button variant="ghost" size="sm" className="h-6 text-[11px] text-primary hover:text-primary gap-1 px-2" onClick={addSupporter}>
+                      <FiPlus className="w-3 h-3" /> Add
+                    </Button>
+                  )}
+                </div>
+                <div className="space-y-3">
+                  {(currentPact.supporters ?? []).map((supporter, index) => (
+                    <div key={index} className="flex gap-2">
+                      <div className="flex-1 space-y-1.5">
+                        <Input
+                          placeholder="Name"
+                          value={supporter.name}
+                          onChange={(e) => updateSupporter(index, 'name', e.target.value)}
+                          className="rounded-xl bg-background/50 h-8 text-xs"
+                          disabled={sampleData}
+                        />
+                        <Textarea
+                          placeholder="Their feedback or observations..."
+                          value={supporter.feedback}
+                          onChange={(e) => updateSupporter(index, 'feedback', e.target.value)}
+                          rows={2}
+                          className="rounded-xl bg-background/50 text-xs resize-none"
+                          disabled={sampleData}
+                        />
+                      </div>
+                      {!sampleData && currentPact.supporters.length > 1 && (
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive flex-shrink-0" onClick={() => removeSupporter(index)}>
+                          <FiTrash2 className="w-3 h-3" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Advanced: JSON override */}
+            <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
+              <CollapsibleTrigger asChild>
+                <button className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors py-1">
+                  <FiSettings className="w-3 h-3" />
+                  <span>Advanced: JSON override</span>
+                  {advancedOpen ? <FiChevronDown className="w-3 h-3" /> : <FiChevronRight className="w-3 h-3" />}
+                </button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <Card className="glass-card rounded-xl mt-2">
+                  <CardContent className="p-4">
+                    <p className="text-[11px] text-muted-foreground mb-2">Paste a full JSON payload to override the form. This sends directly to the agent.</p>
+                    <Textarea
+                      value={jsonText}
+                      onChange={(e) => setJsonText(e.target.value)}
+                      className="font-mono text-[11px] min-h-[200px] rounded-xl bg-background/50 resize-none"
+                      placeholder='{"pact": {...}, "user_profile": {...}, "supporter_feedback": [...]}'
+                    />
+                  </CardContent>
+                </Card>
+              </CollapsibleContent>
+            </Collapsible>
+
+            {/* Generate Button */}
+            <Button
+              onClick={handleGenerate}
+              disabled={loading}
+              className="w-full rounded-xl h-11 text-sm font-semibold forest-gradient text-white shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-all duration-300"
+            >
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <FiRefreshCw className="w-4 h-4 animate-spin" />
+                  Generating...
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  Generate Plan
+                  <FiArrowRight className="w-4 h-4" />
+                </span>
+              )}
+            </Button>
+
+            {error && !loading && (
+              <div className="flex items-start gap-2 p-3 rounded-xl bg-destructive/5 border border-destructive/20 text-xs text-destructive">
+                <FiAlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {/* Powered by */}
+            <div className="flex items-center justify-between py-2">
+              <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                <div className={`w-1.5 h-1.5 rounded-full ${activeAgentId ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
+                <span>5 AI agents orchestrated by Weekly Plan Composer</span>
+              </div>
+            </div>
           </div>
 
-          {/* ── Right Panel: Output ── */}
-          <div>
+          {/* ── Right Panel: Output (3 cols) ── */}
+          <div className="lg:col-span-3">
             <Card className="glass-card-strong rounded-xl min-h-[600px]">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <CardHeader className="pb-2 pt-5 px-6">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
                   <FiCalendar className="w-4 h-4 text-primary" />
                   Your Personalized Plan
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-auto max-h-[calc(100vh-220px)]">
-                  <div className="pr-2">
+              <CardContent className="px-6 pb-6">
+                <ScrollArea className="h-auto max-h-[calc(100vh-200px)]">
+                  <div className="pr-3">
                     <OutputPanel
                       data={currentData}
                       loading={loading}
@@ -1207,7 +925,6 @@ export default function Page() {
               </CardContent>
             </Card>
 
-            {/* Agent Activity Panel */}
             {sessionId && (
               <div className="mt-4">
                 <AgentActivityPanel {...agentActivity} className="rounded-xl" />
