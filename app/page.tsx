@@ -761,7 +761,7 @@ export default function Page() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium">Category</Label>
-                    <Select value={currentPact.category} onValueChange={(val) => updateField('category', val)} disabled={sampleData}>
+                    <Select value={currentPact.category || undefined} onValueChange={(val) => updateField('category', val)} disabled={sampleData}>
                       <SelectTrigger className="rounded-xl bg-background/50 h-9 text-xs">
                         <SelectValue placeholder="Select..." />
                       </SelectTrigger>
@@ -772,7 +772,7 @@ export default function Page() {
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium">Cadence</Label>
-                    <Select value={currentPact.cadence} onValueChange={(val) => updateField('cadence', val)} disabled={sampleData}>
+                    <Select value={currentPact.cadence || undefined} onValueChange={(val) => updateField('cadence', val)} disabled={sampleData}>
                       <SelectTrigger className="rounded-xl bg-background/50 h-9 text-xs">
                         <SelectValue placeholder="Select..." />
                       </SelectTrigger>
