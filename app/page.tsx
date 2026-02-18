@@ -11,7 +11,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Separator } from '@/components/ui/separator'
@@ -26,9 +25,6 @@ import {
 
 // ── Constants ──────────────────────────────────────────────────────
 const AGENT_ID = '69951bcac0c7cf4934c52cc7'
-
-const CATEGORIES = ['Health', 'Career', 'Learning', 'Finance', 'Fitness', 'Relationships', 'Personal Growth', 'Creative', 'Other']
-const CADENCES = ['Daily', 'Weekly']
 
 // ── TypeScript Interfaces ──────────────────────────────────────────
 interface MicroGoal {
@@ -81,8 +77,6 @@ interface Supporter {
 interface PactForm {
   title: string
   description: string
-  category: string
-  cadence: string
   startDate: string
   endDate: string
   supporters: Supporter[]
@@ -101,8 +95,6 @@ interface UserProfile {
 const SAMPLE_PACT: PactForm = {
   title: 'Run a 5K in Under 30 Minutes',
   description: 'Train consistently to improve my running pace and endurance, building up to completing a 5K race in under 30 minutes by the end of the month.',
-  category: 'Fitness',
-  cadence: 'Weekly',
   startDate: '2026-02-18',
   endDate: '2026-03-18',
   supporters: [
@@ -158,8 +150,6 @@ const SAMPLE_RESPONSE: WeeklyPlanOutput = {
 const EMPTY_PACT: PactForm = {
   title: '',
   description: '',
-  category: '',
-  cadence: '',
   startDate: '',
   endDate: '',
   supporters: [{ name: '', feedback: '' }]
@@ -621,8 +611,6 @@ export default function Page() {
       pact: {
         title: pact.title,
         description: pact.description,
-        category: pact.category,
-        cadence: pact.cadence,
         start_date: pact.startDate,
         end_date: pact.endDate
       },
@@ -757,30 +745,6 @@ export default function Page() {
                     className="rounded-xl bg-background/50 resize-none"
                     disabled={sampleData}
                   />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-medium">Category</Label>
-                    <Select value={currentPact.category || undefined} onValueChange={(val) => updateField('category', val)} disabled={sampleData}>
-                      <SelectTrigger className="rounded-xl bg-background/50 h-9 text-xs">
-                        <SelectValue placeholder="Select..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-medium">Cadence</Label>
-                    <Select value={currentPact.cadence || undefined} onValueChange={(val) => updateField('cadence', val)} disabled={sampleData}>
-                      <SelectTrigger className="rounded-xl bg-background/50 h-9 text-xs">
-                        <SelectValue placeholder="Select..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {CADENCES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
