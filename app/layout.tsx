@@ -9,8 +9,8 @@ import { AgentInterceptorProvider } from '@/components/AgentInterceptorProvider'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Next.js App',
-  description: 'Built with Next.js, React, and Tailwind CSS',
+  title: 'GroPact - AI Goal Architect',
+  description: 'Intelligent accountability system that transforms your commitments into personalized, science-backed weekly plans.',
   icons: {
     icon: '/lyzr.png',
   },

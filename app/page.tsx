@@ -386,8 +386,12 @@ function OutputPanel({ data, loading, error, onRetry, rawResponse }: {
   if (!loading && !data && !error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[500px] text-center px-8">
-        <div className="w-20 h-20 rounded-2xl bg-primary/5 border border-primary/10 flex items-center justify-center mb-5">
-          <FiTarget className="w-9 h-9 text-primary/60" />
+        <div className="mb-5">
+          <img
+            src="https://asset.lyzr.app/HJdgFdyU"
+            alt="GroPact"
+            className="h-20 w-auto object-contain opacity-60"
+          />
         </div>
         <h3 className="text-lg font-semibold text-foreground mb-2">Your Plan Awaits</h3>
         <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">
@@ -684,13 +688,11 @@ export default function Page() {
       <header className="sticky top-0 z-40 glass-card-strong border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg forest-gradient flex items-center justify-center shadow-sm">
-              <FiTarget className="w-4 h-4 text-white" />
-            </div>
-            <div>
-              <h1 className="text-base font-semibold text-foreground tracking-tight leading-none">GroPact</h1>
-              <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-widest">AI Goal Architect</p>
-            </div>
+            <img
+              src="https://asset.lyzr.app/HJdgFdyU"
+              alt="GroPact"
+              className="h-10 w-auto object-contain"
+            />
           </div>
           <div className="flex items-center gap-4">
             {/* Auto-synced profile indicator */}
