@@ -390,7 +390,7 @@ function OutputPanel({ data, loading, error, onRetry, rawResponse }: {
           <img
             src="https://asset.lyzr.app/HJdgFdyU"
             alt="GroPact"
-            className="h-20 w-auto object-contain opacity-60"
+            className="h-32 w-auto object-contain opacity-60"
           />
         </div>
         <h3 className="text-lg font-semibold text-foreground mb-2">Your Plan Awaits</h3>
@@ -686,12 +686,12 @@ export default function Page() {
     <div className="min-h-screen">
       {/* Header */}
       <header className="sticky top-0 z-40 glass-card-strong border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-24 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img
               src="https://asset.lyzr.app/HJdgFdyU"
               alt="GroPact"
-              className="h-10 w-auto object-contain"
+              className="h-20 w-auto object-contain"
             />
           </div>
           <div className="flex items-center gap-4">
