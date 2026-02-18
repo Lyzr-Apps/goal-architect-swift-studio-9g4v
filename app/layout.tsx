@@ -5,6 +5,7 @@ import './globals.css'
 import { IframeLoggerInit } from '@/components/IframeLoggerInit'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import { AgentInterceptorProvider } from '@/components/AgentInterceptorProvider'
+import { AuthProvider } from '@/contexts/AuthContext'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 const montserrat = Montserrat({ subsets: ['latin'], variable: '--font-montserrat', weight: ['400', '500', '600', '700'] })
@@ -28,7 +29,9 @@ export default function RootLayout({
         <IframeLoggerInit />
         <ErrorBoundary>
           <AgentInterceptorProvider>
-            {children}
+            <AuthProvider>
+              {children}
+            </AuthProvider>
           </AgentInterceptorProvider>
         </ErrorBoundary>
         {/* Architect Badge — architect.new */}
