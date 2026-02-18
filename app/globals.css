@@ -99,11 +99,15 @@
   }
 
   .gropact-gradient {
-    background: linear-gradient(135deg, #00C4CC 0%, #00B4D8 50%, #0096C7 100%);
+    background: linear-gradient(135deg, #00C4CC 0%, #00B0B8 60%, #009BA3 100%);
+  }
+
+  .gropact-gradient:hover {
+    background: linear-gradient(135deg, #00D4DC 0%, #00C4CC 60%, #00B0B8 100%);
   }
 
   .forest-gradient {
-    background: linear-gradient(135deg, #00C4CC 0%, #00B4D8 50%, #0096C7 100%);
+    background: linear-gradient(135deg, #00C4CC 0%, #00B0B8 60%, #009BA3 100%);
   }
 
   .fade-in {
