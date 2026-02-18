@@ -1,0 +1,27 @@
+{
+  "agent_name": "Pact Interpreter Agent",
+  "agent_id": "69951bb1aa337c283822f4fd",
+  "agent_type": "json",
+  "accessor": "json",
+  "has_module_outputs": false,
+  "is_manager": false,
+  "response_schema": {
+    "type": "object",
+    "properties": {
+      "core_intention": { "type": "string" },
+      "required_behaviors": {
+        "type": "array",
+        "items": { "type": "string" }
+      },
+      "constraints": {
+        "type": "array",
+        "items": { "type": "string" }
+      },
+      "behavioral_expectations": { "type": "string" },
+      "category_context": { "type": "string" },
+      "cadence_analysis": { "type": "string" }
+    },
+    "required": ["core_intention", "required_behaviors", "constraints", "behavioral_expectations", "category_context", "cadence_analysis"],
+    "additionalProperties": false
+  }
+}

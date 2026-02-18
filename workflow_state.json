@@ -1,0 +1,75 @@
+{
+  "app_name": "GroPact AI Goal Architect",
+  "pattern": "manager-subagent",
+  "agents": {
+    "manager": {
+      "agent_id": "69951bcac0c7cf4934c52cc7",
+      "agent_name": "Weekly Plan Composer",
+      "agent_type": "json",
+      "is_manager": true,
+      "provider": "OpenAI",
+      "model": "gpt-4.1",
+      "temperature": 0.4,
+      "top_p": 0.95,
+      "managed_agent_ids": [
+        "69951bb1aa337c283822f4fd",
+        "69951b9f9e8766b163816543",
+        "69951b9fcf3ebb0ac8f62440",
+        "69951ba08731d1e277a701b4"
+      ]
+    },
+    "sub_agents": [
+      {
+        "agent_id": "69951bb1aa337c283822f4fd",
+        "agent_name": "Pact Interpreter Agent",
+        "agent_type": "json",
+        "is_manager": false,
+        "provider": "Anthropic",
+        "model": "claude-sonnet-4-5"
+      },
+      {
+        "agent_id": "69951b9f9e8766b163816543",
+        "agent_name": "User Behavior Analyst Agent",
+        "agent_type": "json",
+        "is_manager": false,
+        "provider": "OpenAI",
+        "model": "gpt-4.1"
+      },
+      {
+        "agent_id": "69951b9fcf3ebb0ac8f62440",
+        "agent_name": "Supporter Insight Agent",
+        "agent_type": "json",
+        "is_manager": false,
+        "provider": "Google",
+        "model": "gemini-2.5-pro"
+      },
+      {
+        "agent_id": "69951ba08731d1e277a701b4",
+        "agent_name": "Micro-Goal and Nudge Generator Agent",
+        "agent_type": "json",
+        "is_manager": false,
+        "provider": "OpenAI",
+        "model": "gpt-4.1"
+      }
+    ]
+  },
+  "workflow": {
+    "nodes": [
+      {"id": "input_node", "type": "Input", "label": "User Pact Payload", "nodeCategory": "input"},
+      {"id": "manager_agent", "type": "Agent", "label": "Weekly Plan Composer", "nodeCategory": "agent"},
+      {"id": "pact_interpreter", "type": "Agent", "label": "Pact Interpreter Agent", "nodeCategory": "agent"},
+      {"id": "behavior_analyst", "type": "Agent", "label": "User Behavior Analyst Agent", "nodeCategory": "agent"},
+      {"id": "supporter_insight", "type": "Agent", "label": "Supporter Insight Agent", "nodeCategory": "agent"},
+      {"id": "microgoal_generator", "type": "Agent", "label": "Micro-Goal & Nudge Generator", "nodeCategory": "agent"},
+      {"id": "output_node", "type": "Output", "label": "Generated Weekly Plan", "nodeCategory": "end"}
+    ],
+    "edges": [
+      {"source": "input_node", "target": "manager_agent"},
+      {"source": "manager_agent", "target": "pact_interpreter"},
+      {"source": "manager_agent", "target": "behavior_analyst"},
+      {"source": "manager_agent", "target": "supporter_insight"},
+      {"source": "manager_agent", "target": "microgoal_generator"},
+      {"source": "manager_agent", "target": "output_node"}
+    ]
+  }
+}

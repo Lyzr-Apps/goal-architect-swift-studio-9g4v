@@ -1,0 +1,84 @@
+{
+  "agent_name": "Weekly Plan Composer",
+  "agent_id": "69951bcac0c7cf4934c52cc7",
+  "agent_type": "json",
+  "accessor": "json",
+  "has_module_outputs": false,
+  "is_manager": true,
+  "managed_agent_ids": [
+    "69951bb1aa337c283822f4fd",
+    "69951b9f9e8766b163816543",
+    "69951b9fcf3ebb0ac8f62440",
+    "69951ba08731d1e277a701b4"
+  ],
+  "response_schema": {
+    "type": "object",
+    "properties": {
+      "behavioral_state": { "type": "string" },
+      "identity_affirmation": { "type": "string" },
+      "micro_goals": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "goal_text": { "type": "string" },
+            "difficulty": { "type": "string" },
+            "due_date": { "type": "string" },
+            "reasoning": { "type": "string" },
+            "measurable_outcome": { "type": "string" }
+          },
+          "required": ["goal_text", "difficulty", "due_date", "reasoning", "measurable_outcome"],
+          "additionalProperties": false
+        }
+      },
+      "nudges": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "nudge_text": { "type": "string" },
+            "behavioral_principle": { "type": "string" }
+          },
+          "required": ["nudge_text", "behavioral_principle"],
+          "additionalProperties": false
+        }
+      },
+      "weekly_plan": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "day": { "type": "string" },
+            "micro_goal": { "type": "string" },
+            "reminder": { "type": "string" },
+            "supporter_prompt": { "type": "string" }
+          },
+          "required": ["day", "micro_goal", "reminder", "supporter_prompt"],
+          "additionalProperties": false
+        }
+      },
+      "explanations": {
+        "type": "object",
+        "properties": {
+          "pact_interpretation": { "type": "string" },
+          "behavior_insights": { "type": "string" },
+          "supporter_insights": { "type": "string" }
+        },
+        "required": ["pact_interpretation", "behavior_insights", "supporter_insights"],
+        "additionalProperties": false
+      },
+      "difficulty_distribution": {
+        "type": "object",
+        "properties": {
+          "easy_percent": { "type": "number" },
+          "medium_percent": { "type": "number" },
+          "hard_percent": { "type": "number" }
+        },
+        "required": ["easy_percent", "medium_percent", "hard_percent"],
+        "additionalProperties": false
+      }
+    },
+    "required": ["behavioral_state", "identity_affirmation", "micro_goals", "nudges", "weekly_plan", "explanations", "difficulty_distribution"],
+    "additionalProperties": false
+  }
+}

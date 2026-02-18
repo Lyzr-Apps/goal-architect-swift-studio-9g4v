@@ -1,0 +1,40 @@
+{
+  "agent_name": "User Behavior Analyst Agent",
+  "agent_id": "69951b9f9e8766b163816543",
+  "agent_type": "json",
+  "accessor": "json",
+  "has_module_outputs": false,
+  "is_manager": false,
+  "response_schema": {
+    "type": "object",
+    "properties": {
+      "behavioral_state": { "type": "string" },
+      "state_reasoning": { "type": "string" },
+      "bottlenecks": {
+        "type": "array",
+        "items": { "type": "string" }
+      },
+      "strengths": {
+        "type": "array",
+        "items": { "type": "string" }
+      },
+      "weaknesses": {
+        "type": "array",
+        "items": { "type": "string" }
+      },
+      "difficulty_recommendation": {
+        "type": "object",
+        "properties": {
+          "easy_percent": { "type": "number" },
+          "medium_percent": { "type": "number" },
+          "hard_percent": { "type": "number" }
+        },
+        "required": ["easy_percent", "medium_percent", "hard_percent"],
+        "additionalProperties": false
+      },
+      "adaptive_notes": { "type": "string" }
+    },
+    "required": ["behavioral_state", "state_reasoning", "bottlenecks", "strengths", "weaknesses", "difficulty_recommendation", "adaptive_notes"],
+    "additionalProperties": false
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "agent_name": "Supporter Insight Agent",
+  "agent_id": "69951b9fcf3ebb0ac8f62440",
+  "agent_type": "json",
+  "accessor": "json",
+  "has_module_outputs": false,
+  "is_manager": false,
+  "response_schema": {
+    "type": "object",
+    "properties": {
+      "supporter_analyses": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "supporter_name": { "type": "string" },
+            "tone": { "type": "string" },
+            "key_themes": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "influence_recommendation": { "type": "string" }
+          },
+          "required": ["supporter_name", "tone", "key_themes", "influence_recommendation"],
+          "additionalProperties": false
+        }
+      },
+      "overall_tone_adjustment": { "type": "string" },
+      "content_priorities": {
+        "type": "array",
+        "items": { "type": "string" }
+      },
+      "engagement_prompts": {
+        "type": "array",
+        "items": { "type": "string" }
+      }
+    },
+    "required": ["supporter_analyses", "overall_tone_adjustment", "content_priorities", "engagement_prompts"],
+    "additionalProperties": false
+  }
+}

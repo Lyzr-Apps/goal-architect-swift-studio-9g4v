@@ -1,0 +1,82 @@
+{
+  "agent_name": "Weekly Plan Composer",
+  "agent_id": "69951bcac0c7cf4934c52cc7",
+  "description": "Orchestrates all sub-agents, routes the incoming JSON payload to each specialist, aggregates their outputs into the final structured JSON containing micro-goals, nudges, weekly plan, and explanations. Applies identity-based affirmations and ensures coherence across all sections.",
+  "agent_type": "json",
+  "accessor": "result",
+  "auto_generated": true,
+  "response_schema": {
+    "behavioral_state": "string",
+    "identity_affirmation": "string",
+    "micro_goals": [
+      {
+        "goal_text": "string",
+        "difficulty": "string",
+        "due_date": "string",
+        "reasoning": "string",
+        "measurable_outcome": "string"
+      }
+    ],
+    "nudges": [
+      {
+        "nudge_text": "string",
+        "behavioral_principle": "string"
+      }
+    ],
+    "weekly_plan": [
+      {
+        "day": "string",
+        "micro_goal": "string",
+        "reminder": "string",
+        "supporter_prompt": "string"
+      }
+    ],
+    "explanations": {
+      "pact_interpretation": "string",
+      "behavior_insights": "string",
+      "supporter_insights": "string"
+    },
+    "difficulty_distribution": {
+      "easy_percent": "number",
+      "medium_percent": "number",
+      "hard_percent": "number"
+    }
+  },
+  "example_response": {
+    "behavioral_state": "sample string",
+    "identity_affirmation": "sample string",
+    "micro_goals": [
+      {
+        "goal_text": "sample string",
+        "difficulty": "sample string",
+        "due_date": "sample string",
+        "reasoning": "sample string",
+        "measurable_outcome": "sample string"
+      }
+    ],
+    "nudges": [
+      {
+        "nudge_text": "sample string",
+        "behavioral_principle": "sample string"
+      }
+    ],
+    "weekly_plan": [
+      {
+        "day": "sample string",
+        "micro_goal": "sample string",
+        "reminder": "sample string",
+        "supporter_prompt": "sample string"
+      }
+    ],
+    "explanations": {
+      "pact_interpretation": "sample string",
+      "behavior_insights": "sample string",
+      "supporter_insights": "sample string"
+    },
+    "difficulty_distribution": {
+      "easy_percent": 0,
+      "medium_percent": 0,
+      "hard_percent": 0
+    }
+  }
+}

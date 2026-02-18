@@ -1,0 +1,57 @@
+{
+  "agent_name": "Micro-Goal and Nudge Generator Agent",
+  "agent_id": "69951ba08731d1e277a701b4",
+  "agent_type": "json",
+  "accessor": "json",
+  "has_module_outputs": false,
+  "is_manager": false,
+  "response_schema": {
+    "type": "object",
+    "properties": {
+      "micro_goals": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "goal_text": { "type": "string" },
+            "difficulty": { "type": "string" },
+            "due_date": { "type": "string" },
+            "reasoning": { "type": "string" },
+            "measurable_outcome": { "type": "string" }
+          },
+          "required": ["goal_text", "difficulty", "due_date", "reasoning", "measurable_outcome"],
+          "additionalProperties": false
+        }
+      },
+      "nudges": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "nudge_text": { "type": "string" },
+            "behavioral_principle": { "type": "string" }
+          },
+          "required": ["nudge_text", "behavioral_principle"],
+          "additionalProperties": false
+        }
+      },
+      "identity_affirmation": { "type": "string" },
+      "weekly_plan": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "day": { "type": "string" },
+            "micro_goal": { "type": "string" },
+            "reminder": { "type": "string" },
+            "supporter_prompt": { "type": "string" }
+          },
+          "required": ["day", "micro_goal", "reminder", "supporter_prompt"],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": ["micro_goals", "nudges", "identity_affirmation", "weekly_plan"],
+    "additionalProperties": false
+  }
+}
