@@ -8,7 +8,11 @@ import WeeklyPlanView from '@/components/WeeklyPlanView'
 import SupporterList from '@/components/SupporterList'
 import CheckInForm from '@/components/CheckInForm'
 import AIGoalArchitect from '@/components/AIGoalArchitect'
+import VerificationPanel from '@/components/VerificationPanel'
+import WeeklyReflectionForm from '@/components/WeeklyReflectionForm'
+import ProgressCardDisplay from '@/components/ProgressCardDisplay'
 import StreakCounter from '@/components/StreakCounter'
+import TrustScoreBadge from '@/components/TrustScoreBadge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -17,10 +21,10 @@ import { Progress } from '@/components/ui/progress'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePacts } from '@/contexts/PactContext'
-import type { Supporter, AIPlanOutput, DailyCheckIn } from '@/lib/types'
+import type { Supporter, AIPlanOutput, DailyCheckIn, Verification, WeeklyReflection } from '@/lib/types'
 import {
   FiArrowLeft, FiCalendar, FiTarget, FiZap, FiStar,
-  FiTrash2, FiActivity,
+  FiTrash2, FiActivity, FiShield, FiBookOpen, FiAward,
 } from 'react-icons/fi'
 
 function formatDate(dateStr: string): string {
@@ -53,11 +57,23 @@ const moodColors: Record<string, string> = {
   tough: 'bg-red-100 text-red-700',
 }
 
+const verMethodLabels: Record<string, string> = {
+  photo: 'Photo Proof',
+  strava: 'Strava',
+  supporter: 'Supporter',
+  self: 'Self Report',
+  mixed: 'Mixed',
+}
+
 function PactDetailContent() {
   const params = useParams()
   const router = useRouter()
   const { user } = useAuth()
-  const { getPact, updatePact, deletePact, addCheckIn, toggleMicroGoal, toggleWeeklyDay, pacts } = usePacts()
+  const {
+    getPact, updatePact, deletePact, addCheckIn, toggleMicroGoal, toggleWeeklyDay,
+    pacts, addVerification, confirmVerification, addWeeklyReflection,
+    generateProgressCard, shareProgressCard,
+  } = usePacts()
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
 
@@ -83,8 +99,12 @@ function PactDetailContent() {
   const weeklyPlan = Array.isArray(pact.weeklyPlan) ? pact.weeklyPlan : []
   const supporters = Array.isArray(pact.supporters) ? pact.supporters : []
   const checkIns = Array.isArray(pact.checkIns) ? pact.checkIns : []
+  const verifications = Array.isArray(pact.verifications) ? pact.verifications : []
+  const reflections = Array.isArray(pact.weeklyReflections) ? pact.weeklyReflections : []
+  const progressCards = Array.isArray(pact.progressCards) ? pact.progressCards : []
   const remaining = daysRemaining(pact.endDate)
   const completedGoals = goals.filter(g => g.completed).length
+  const verifiedCount = verifications.filter(v => v.status === 'verified').length
 
   const handleDelete = () => {
     deletePact(pact.id)
@@ -92,17 +112,11 @@ function PactDetailContent() {
   }
 
   const handleAddSupporter = (supporter: Supporter) => {
-    updatePact({
-      ...pact,
-      supporters: [...supporters, supporter],
-    })
+    updatePact({ ...pact, supporters: [...supporters, supporter] })
   }
 
   const handleRemoveSupporter = (id: string) => {
-    updatePact({
-      ...pact,
-      supporters: supporters.filter(s => s.id !== id),
-    })
+    updatePact({ ...pact, supporters: supporters.filter(s => s.id !== id) })
   }
 
   const handleCheckIn = (checkIn: DailyCheckIn) => {
@@ -121,6 +135,26 @@ function PactDetailContent() {
     })
   }
 
+  const handleAddVerification = (verification: Verification) => {
+    addVerification(pact.id, verification)
+  }
+
+  const handleConfirmVerification = (verificationId: string) => {
+    confirmVerification(pact.id, verificationId, user?.name ?? 'User')
+  }
+
+  const handleAddReflection = (reflection: WeeklyReflection) => {
+    addWeeklyReflection(pact.id, reflection)
+  }
+
+  const handleGenerateCard = () => {
+    generateProgressCard(pact.id)
+  }
+
+  const handleShareCard = (cardId: string) => {
+    shareProgressCard(pact.id, cardId)
+  }
+
   const recentCheckIns = pacts
     .flatMap(p => Array.isArray(p.checkIns) ? p.checkIns : [])
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -128,6 +162,7 @@ function PactDetailContent() {
     .map(ci => ci.note || 'Check-in recorded')
 
   const diffDist = pact.aiPlan?.difficultyDistribution
+  const previousCheckIn = checkIns.length > 0 ? checkIns[0] : null
 
   return (
     <div className="space-y-6 fade-in-up">
@@ -146,6 +181,10 @@ function PactDetailContent() {
               {pact.category && (
                 <Badge variant="outline" className="text-xs">{pact.category}</Badge>
               )}
+              <Badge variant="outline" className="text-xs gap-0.5">
+                <FiShield className="w-3 h-3" />
+                {verMethodLabels[pact.verificationMethod] ?? pact.verificationMethod}
+              </Badge>
               <span className="text-xs text-muted-foreground flex items-center gap-1">
                 <FiCalendar className="w-3 h-3" />
                 {formatDate(pact.startDate)} - {formatDate(pact.endDate)}
@@ -209,16 +248,17 @@ function PactDetailContent() {
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="w-full justify-start bg-muted/50 rounded-xl p-1 flex-wrap h-auto gap-0.5">
               <TabsTrigger value="overview" className="rounded-lg text-xs">Overview</TabsTrigger>
-              <TabsTrigger value="goals" className="rounded-lg text-xs">Micro-Goals</TabsTrigger>
-              <TabsTrigger value="plan" className="rounded-lg text-xs">Weekly Plan</TabsTrigger>
+              <TabsTrigger value="goals" className="rounded-lg text-xs">Goals</TabsTrigger>
+              <TabsTrigger value="plan" className="rounded-lg text-xs">Plan</TabsTrigger>
+              <TabsTrigger value="verification" className="rounded-lg text-xs">Verification</TabsTrigger>
               <TabsTrigger value="supporters" className="rounded-lg text-xs">Supporters</TabsTrigger>
               <TabsTrigger value="checkins" className="rounded-lg text-xs">Check-ins</TabsTrigger>
+              <TabsTrigger value="reflections" className="rounded-lg text-xs">Reflections</TabsTrigger>
               <TabsTrigger value="ai" className="rounded-lg text-xs">AI Plan</TabsTrigger>
             </TabsList>
 
             {/* Overview */}
             <TabsContent value="overview" className="space-y-4 mt-4">
-              {/* Stats */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <Card className="glass-card rounded-xl">
                   <CardContent className="p-3 text-center">
@@ -246,6 +286,19 @@ function PactDetailContent() {
                 </Card>
               </div>
 
+              {/* Verified Count */}
+              {verifiedCount > 0 && (
+                <Card className="glass-card rounded-xl">
+                  <CardContent className="p-3 flex items-center gap-3">
+                    <FiShield className="w-5 h-5 text-emerald-600" />
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{verifiedCount} Verified Actions</p>
+                      <p className="text-[10px] text-muted-foreground">{verifications.length} total verifications submitted</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Next Goal */}
               {goals.find(g => !g.completed) && (
                 <Card className="glass-card rounded-xl">
@@ -256,7 +309,6 @@ function PactDetailContent() {
                 </Card>
               )}
 
-              {/* Progress */}
               <Card className="glass-card rounded-xl">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-2">
@@ -267,7 +319,6 @@ function PactDetailContent() {
                 </CardContent>
               </Card>
 
-              {/* Difficulty Distribution */}
               {diffDist && (diffDist.easyPercent + diffDist.mediumPercent + diffDist.hardPercent) > 0 && (
                 <Card className="glass-card rounded-xl">
                   <CardContent className="p-4">
@@ -288,7 +339,6 @@ function PactDetailContent() {
                 </Card>
               )}
 
-              {/* Recent check-ins */}
               {checkIns.length > 0 && (
                 <Card className="glass-card rounded-xl">
                   <CardHeader className="pb-2">
@@ -309,6 +359,25 @@ function PactDetailContent() {
                   </CardContent>
                 </Card>
               )}
+
+              {/* Progress Cards */}
+              {progressCards.length > 0 && (
+                <Card className="glass-card rounded-xl">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <FiAward className="w-4 h-4 text-[#00C4CC]" />
+                      Progress Cards
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ProgressCardDisplay
+                      cards={progressCards}
+                      onGenerate={handleGenerateCard}
+                      onShare={handleShareCard}
+                    />
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
 
             {/* Micro-Goals */}
@@ -316,6 +385,22 @@ function PactDetailContent() {
               <MicroGoalList
                 goals={goals}
                 onToggle={(goalId) => toggleMicroGoal(pact.id, goalId)}
+                verifications={verifications}
+                onRequestVerification={(goalId) => {
+                  const goal = goals.find(g => g.id === goalId)
+                  if (goal) {
+                    const verification: Verification = {
+                      id: 'ver-' + Date.now().toString(36),
+                      pactId: pact.id,
+                      type: 'self_report',
+                      status: 'pending',
+                      evidence: `Goal completed: ${goal.goalText}`,
+                      createdAt: new Date().toISOString(),
+                      note: goal.goalText,
+                    }
+                    handleAddVerification(verification)
+                  }
+                }}
               />
             </TabsContent>
 
@@ -324,6 +409,19 @@ function PactDetailContent() {
               <WeeklyPlanView
                 plan={weeklyPlan}
                 onToggle={(dayIndex) => toggleWeeklyDay(pact.id, dayIndex)}
+                verifications={verifications}
+              />
+            </TabsContent>
+
+            {/* Verification */}
+            <TabsContent value="verification" className="mt-4">
+              <VerificationPanel
+                pactId={pact.id}
+                verifications={verifications}
+                supporters={supporters}
+                verificationMethod={pact.verificationMethod}
+                onAddVerification={handleAddVerification}
+                onConfirmVerification={handleConfirmVerification}
               />
             </TabsContent>
 
@@ -341,6 +439,10 @@ function PactDetailContent() {
               <CheckInForm
                 microGoals={goals}
                 onSubmit={handleCheckIn}
+                identityStatement={pact.identityStatement}
+                previousCheckIn={previousCheckIn}
+                onRequestVerification={handleAddVerification}
+                pactId={pact.id}
               />
 
               {checkIns.length > 0 && (
@@ -370,6 +472,16 @@ function PactDetailContent() {
               )}
             </TabsContent>
 
+            {/* Reflections */}
+            <TabsContent value="reflections" className="mt-4">
+              <WeeklyReflectionForm
+                pactId={pact.id}
+                pactStartDate={pact.startDate}
+                existingReflections={reflections}
+                onSubmit={handleAddReflection}
+              />
+            </TabsContent>
+
             {/* AI Plan */}
             <TabsContent value="ai" className="mt-4">
               <AIGoalArchitect
@@ -385,7 +497,6 @@ function PactDetailContent() {
                 onApply={handleApplyPlan}
               />
 
-              {/* Explanations from existing plan */}
               {pact.aiPlan?.explanations && (
                 <Card className="glass-card rounded-xl mt-4">
                   <CardHeader className="pb-2">
@@ -439,7 +550,32 @@ function PactDetailContent() {
                   <span className="text-muted-foreground">Supporters</span>
                   <span className="font-medium text-foreground">{supporters.length}</span>
                 </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">Verified</span>
+                  <span className="font-medium text-emerald-600">{verifiedCount}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">Reflections</span>
+                  <span className="font-medium text-foreground">{reflections.length}</span>
+                </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Progress Cards */}
+          <Card className="glass-card rounded-xl">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-semibold flex items-center gap-1.5">
+                <FiAward className="w-3.5 h-3.5 text-[#00C4CC]" />
+                Progress Cards
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ProgressCardDisplay
+                cards={progressCards}
+                onGenerate={handleGenerateCard}
+                onShare={handleShareCard}
+              />
             </CardContent>
           </Card>
 

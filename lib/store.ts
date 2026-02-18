@@ -1,5 +1,5 @@
-import type { User, Pact, Room, RoomPost, DailyCheckIn } from './types'
-import { MOCK_USER, MOCK_PACTS, MOCK_ROOMS } from './mockData'
+import type { User, Pact, Room, RoomPost, DailyCheckIn, Verification, WeeklyReflection, ProgressCard, SupporterActivity, RoomChallenge } from './types'
+import { MOCK_USER, MOCK_PACTS, MOCK_ROOMS, SUPPORTER_ACTIVITY_FEED } from './mockData'
 
 const KEYS = {
   USER: 'gropact_user',
@@ -8,6 +8,7 @@ const KEYS = {
   PACTS: 'gropact_pacts',
   ROOMS: 'gropact_rooms',
   INITIALIZED: 'gropact_initialized',
+  SUPPORTER_ACTIVITY: 'gropact_supporter_activity',
 }
 
 function safeGet<T>(key: string): T | null {
@@ -52,6 +53,14 @@ export function setUser(user: User): void {
     users.push(user)
   }
   safeSet(KEYS.USERS, users)
+}
+
+export function updateUserTier(tier: 'free' | 'mid' | 'premium'): void {
+  const user = getUser()
+  if (user) {
+    user.tier = tier
+    setUser(user)
+  }
 }
 
 // ── Auth ──────────────────────────────────────────────────────
@@ -112,6 +121,97 @@ export function deletePact(pactId: string): void {
   safeSet(KEYS.PACTS, all.filter(p => p.id !== pactId))
 }
 
+// ── Verifications ──────────────────────────────────────────────
+export function addVerification(pactId: string, verification: Verification): void {
+  const all = safeGet<Pact[]>(KEYS.PACTS) ?? []
+  const pact = all.find(p => p.id === pactId)
+  if (pact) {
+    const verifications = Array.isArray(pact.verifications) ? pact.verifications : []
+    pact.verifications = [...verifications, verification]
+    pact.updatedAt = new Date().toISOString()
+    safeSet(KEYS.PACTS, all)
+  }
+}
+
+export function updateVerification(pactId: string, verificationId: string, updates: Partial<Verification>): void {
+  const all = safeGet<Pact[]>(KEYS.PACTS) ?? []
+  const pact = all.find(p => p.id === pactId)
+  if (pact) {
+    const verifications = Array.isArray(pact.verifications) ? pact.verifications : []
+    const idx = verifications.findIndex(v => v.id === verificationId)
+    if (idx >= 0) {
+      verifications[idx] = { ...verifications[idx], ...updates }
+      pact.verifications = verifications
+      pact.updatedAt = new Date().toISOString()
+      safeSet(KEYS.PACTS, all)
+    }
+  }
+}
+
+export function getVerifications(pactId: string): Verification[] {
+  const pact = getPact(pactId)
+  return Array.isArray(pact?.verifications) ? pact.verifications : []
+}
+
+// ── Weekly Reflections ──────────────────────────────────────────
+export function addWeeklyReflection(pactId: string, reflection: WeeklyReflection): void {
+  const all = safeGet<Pact[]>(KEYS.PACTS) ?? []
+  const pact = all.find(p => p.id === pactId)
+  if (pact) {
+    const reflections = Array.isArray(pact.weeklyReflections) ? pact.weeklyReflections : []
+    pact.weeklyReflections = [...reflections, reflection]
+    pact.updatedAt = new Date().toISOString()
+    safeSet(KEYS.PACTS, all)
+  }
+}
+
+export function getWeeklyReflections(pactId: string): WeeklyReflection[] {
+  const pact = getPact(pactId)
+  return Array.isArray(pact?.weeklyReflections) ? pact.weeklyReflections : []
+}
+
+// ── Progress Cards ──────────────────────────────────────────────
+export function addProgressCard(pactId: string, card: ProgressCard): void {
+  const all = safeGet<Pact[]>(KEYS.PACTS) ?? []
+  const pact = all.find(p => p.id === pactId)
+  if (pact) {
+    const cards = Array.isArray(pact.progressCards) ? pact.progressCards : []
+    pact.progressCards = [...cards, card]
+    pact.updatedAt = new Date().toISOString()
+    safeSet(KEYS.PACTS, all)
+  }
+}
+
+export function getProgressCards(pactId: string): ProgressCard[] {
+  const pact = getPact(pactId)
+  return Array.isArray(pact?.progressCards) ? pact.progressCards : []
+}
+
+export function shareProgressCard(pactId: string, cardId: string): void {
+  const all = safeGet<Pact[]>(KEYS.PACTS) ?? []
+  const pact = all.find(p => p.id === pactId)
+  if (pact) {
+    const cards = Array.isArray(pact.progressCards) ? pact.progressCards : []
+    const idx = cards.findIndex(c => c.id === cardId)
+    if (idx >= 0) {
+      cards[idx] = { ...cards[idx], shared: true }
+      pact.progressCards = cards
+      pact.updatedAt = new Date().toISOString()
+      safeSet(KEYS.PACTS, all)
+    }
+  }
+}
+
+// ── Supporter Activity ──────────────────────────────────────────
+export function getSupporterActivity(): SupporterActivity[] {
+  return safeGet<SupporterActivity[]>(KEYS.SUPPORTER_ACTIVITY) ?? []
+}
+
+export function addSupporterActivity(activity: SupporterActivity): void {
+  const all = getSupporterActivity()
+  safeSet(KEYS.SUPPORTER_ACTIVITY, [activity, ...all])
+}
+
 // ── Rooms ──────────────────────────────────────────────────────
 export function getRooms(): Room[] {
   return safeGet<Room[]>(KEYS.ROOMS) ?? []
@@ -169,6 +269,57 @@ export function likePost(roomId: string, postId: string, userId: string): void {
   }
 }
 
+// ── Room Challenges ──────────────────────────────────────────────
+export function addChallenge(roomId: string, challenge: RoomChallenge): void {
+  const rooms = getRooms()
+  const room = rooms.find(r => r.id === roomId)
+  if (room) {
+    const challenges = Array.isArray(room.challenges) ? room.challenges : []
+    room.challenges = [...challenges, challenge]
+    safeSet(KEYS.ROOMS, rooms)
+  }
+}
+
+export function joinChallenge(roomId: string, challengeId: string, userId: string, userName: string): void {
+  const rooms = getRooms()
+  const room = rooms.find(r => r.id === roomId)
+  if (room) {
+    const challenges = Array.isArray(room.challenges) ? room.challenges : []
+    const challenge = challenges.find(c => c.id === challengeId)
+    if (challenge) {
+      const participants = Array.isArray(challenge.participants) ? challenge.participants : []
+      if (!participants.find(p => p.userId === userId)) {
+        challenge.participants = [...participants, {
+          userId,
+          userName,
+          joinedAt: new Date().toISOString(),
+          progress: 0,
+          completedMilestones: [],
+          verified: false,
+        }]
+        safeSet(KEYS.ROOMS, rooms)
+      }
+    }
+  }
+}
+
+export function updateChallengeProgress(roomId: string, challengeId: string, userId: string, progress: number): void {
+  const rooms = getRooms()
+  const room = rooms.find(r => r.id === roomId)
+  if (room) {
+    const challenges = Array.isArray(room.challenges) ? room.challenges : []
+    const challenge = challenges.find(c => c.id === challengeId)
+    if (challenge) {
+      const participants = Array.isArray(challenge.participants) ? challenge.participants : []
+      const participant = participants.find(p => p.userId === userId)
+      if (participant) {
+        participant.progress = progress
+        safeSet(KEYS.ROOMS, rooms)
+      }
+    }
+  }
+}
+
 // ── Initialize ──────────────────────────────────────────────────
 export function initializeStore(): void {
   if (typeof window === 'undefined') return
@@ -190,6 +341,10 @@ export function initializeStore(): void {
     safeSet(KEYS.ROOMS, MOCK_ROOMS)
   }
 
+  if (!safeGet<SupporterActivity[]>(KEYS.SUPPORTER_ACTIVITY)?.length) {
+    safeSet(KEYS.SUPPORTER_ACTIVITY, SUPPORTER_ACTIVITY_FEED)
+  }
+
   localStorage.setItem(KEYS.INITIALIZED, 'true')
 }
 
@@ -206,6 +361,7 @@ export function exportAllData(): object {
     user: getUser(),
     pacts: getUser() ? getPacts(getUser()!.id) : [],
     rooms: getRooms(),
+    supporterActivity: getSupporterActivity(),
     exportedAt: new Date().toISOString(),
   }
 }

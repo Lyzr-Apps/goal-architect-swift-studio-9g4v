@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
-import { FiChevronRight, FiTarget } from 'react-icons/fi'
+import { FiChevronRight, FiTarget, FiShield, FiCamera, FiActivity, FiUsers, FiEdit, FiBookOpen } from 'react-icons/fi'
 import StreakCounter from '@/components/StreakCounter'
 import type { Pact } from '@/lib/types'
 
@@ -27,10 +27,32 @@ const categoryColors: Record<string, string> = {
   Career: 'bg-indigo-50 text-indigo-600 border-indigo-200',
 }
 
+const verMethodConfig: Record<string, { icon: typeof FiShield; label: string }> = {
+  strava: { icon: FiActivity, label: 'Strava' },
+  photo: { icon: FiCamera, label: 'Photo' },
+  supporter: { icon: FiUsers, label: 'Supporter' },
+  self: { icon: FiEdit, label: 'Self' },
+  mixed: { icon: FiShield, label: 'Mixed' },
+}
+
 export default function PactCard({ pact }: PactCardProps) {
   const goals = Array.isArray(pact.microGoals) ? pact.microGoals : []
   const nextGoal = goals.find(g => !g.completed)
   const supporters = Array.isArray(pact.supporters) ? pact.supporters : []
+  const verifications = Array.isArray(pact.verifications) ? pact.verifications : []
+  const verifiedCount = verifications.filter(v => v.status === 'verified').length
+  const reflections = Array.isArray(pact.weeklyReflections) ? pact.weeklyReflections : []
+  const startMs = new Date(pact.startDate).getTime()
+  const currentWeek = Math.max(1, Math.ceil((Date.now() - startMs) / (7 * 24 * 60 * 60 * 1000)))
+  const hasCurrentReflection = reflections.some(r => r.weekNumber === currentWeek)
+
+  const verMethod = verMethodConfig[pact.verificationMethod] ?? verMethodConfig.self
+  const VerIcon = verMethod.icon
+
+  const avgTrustScore = supporters.length > 0
+    ? Math.round(supporters.reduce((sum, s) => sum + (s.trustScore ?? 50), 0) / supporters.length)
+    : 0
+
   const description = pact.description?.length > 120
     ? pact.description.slice(0, 120) + '...'
     : pact.description ?? ''
@@ -49,7 +71,7 @@ export default function PactCard({ pact }: PactCardProps) {
             <FiChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5 group-hover:text-[#00C4CC] transition-colors" />
           </div>
 
-          <div className="flex items-center gap-2 mb-3 flex-wrap">
+          <div className="flex items-center gap-1.5 mb-3 flex-wrap">
             <Badge variant="outline" className={`text-[10px] px-2 py-0 border ${statusColors[pact.status] ?? 'bg-gray-100 text-gray-600'}`}>
               {pact.status}
             </Badge>
@@ -58,6 +80,10 @@ export default function PactCard({ pact }: PactCardProps) {
                 {pact.category}
               </Badge>
             )}
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0 border gap-0.5">
+              <VerIcon className="w-2.5 h-2.5" />
+              {verMethod.label}
+            </Badge>
             {pact.streak > 0 && <StreakCounter streak={pact.streak} variant="compact" />}
           </div>
 
@@ -76,18 +102,33 @@ export default function PactCard({ pact }: PactCardProps) {
             </div>
           )}
 
-          {supporters.length > 0 && (
-            <div className="flex items-center gap-1">
-              {supporters.slice(0, 3).map((s) => (
-                <div key={s.id} className="w-6 h-6 rounded-full bg-[#00C4CC]/15 flex items-center justify-center text-[10px] font-semibold text-[#00C4CC] border border-[#00C4CC]/20">
-                  {(s.name ?? '?')[0]?.toUpperCase()}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {supporters.length > 0 && (
+                <div className="flex items-center gap-1">
+                  {supporters.slice(0, 3).map((s) => (
+                    <div key={s.id} className="w-6 h-6 rounded-full bg-[#00C4CC]/15 flex items-center justify-center text-[10px] font-semibold text-[#00C4CC] border border-[#00C4CC]/20">
+                      {(s.name ?? '?')[0]?.toUpperCase()}
+                    </div>
+                  ))}
+                  {supporters.length > 3 && (
+                    <span className="text-[10px] text-muted-foreground ml-0.5">+{supporters.length - 3}</span>
+                  )}
                 </div>
-              ))}
-              {supporters.length > 3 && (
-                <span className="text-[10px] text-muted-foreground ml-1">+{supporters.length - 3}</span>
               )}
             </div>
-          )}
+            <div className="flex items-center gap-2">
+              {verifiedCount > 0 && (
+                <span className="text-[10px] text-emerald-600 flex items-center gap-0.5">
+                  <FiShield className="w-3 h-3" />
+                  {verifiedCount} verified
+                </span>
+              )}
+              {pact.status === 'active' && (
+                <div className={`w-2 h-2 rounded-full ${hasCurrentReflection ? 'bg-emerald-400' : 'bg-amber-400'}`} title={hasCurrentReflection ? 'Reflection done' : 'Reflection due'} />
+              )}
+            </div>
+          </div>
         </CardContent>
       </Card>
     </Link>

@@ -56,7 +56,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: true }
     }
 
-    // For demo: create a new user on login if not found
     const newUser: User = {
       id: 'user-' + generateUUID().slice(0, 8),
       name: email.split('@')[0],
@@ -67,6 +66,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       completionRate: 0,
       totalPacts: 0,
       completedPacts: 0,
+      tier: 'free',
+      trustScore: 50,
+      totalVerifications: 0,
+      supporterOf: [],
     }
     storeSetUser(newUser)
     setSession(newUser.id)
@@ -100,6 +103,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       completionRate: 0,
       totalPacts: 0,
       completedPacts: 0,
+      tier: 'free',
+      trustScore: 50,
+      totalVerifications: 0,
+      supporterOf: [],
     }
     storeSetUser(newUser)
     setSession(newUser.id)

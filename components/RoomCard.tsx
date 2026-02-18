@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { FiUsers, FiChevronRight, FiActivity, FiBookOpen, FiStar, FiTarget } from 'react-icons/fi'
+import { FiUsers, FiChevronRight, FiActivity, FiBookOpen, FiStar, FiTarget, FiFlag } from 'react-icons/fi'
 import type { Room } from '@/lib/types'
 
 interface RoomCardProps {
@@ -21,6 +21,12 @@ const categoryColors: Record<string, string> = {
   Career: 'bg-indigo-50 text-indigo-600 border-indigo-200',
 }
 
+const typeColors: Record<string, string> = {
+  community: 'bg-blue-100 text-blue-700',
+  challenge: 'bg-amber-100 text-amber-700',
+  creator: 'bg-purple-100 text-purple-700',
+}
+
 function getIcon(iconName: string) {
   switch (iconName) {
     case 'FiActivity': return <FiActivity className="w-5 h-5" />
@@ -32,7 +38,9 @@ function getIcon(iconName: string) {
 }
 
 export default function RoomCard({ room, isMember, onJoin, onLeave }: RoomCardProps) {
-  const posts = Array.isArray(room.posts) ? room.posts : []
+  const challenges = Array.isArray(room.challenges) ? room.challenges : []
+  const activeChallenge = challenges.find(c => c.status === 'active')
+  const participants = activeChallenge && Array.isArray(activeChallenge.participants) ? activeChallenge.participants : []
 
   return (
     <Card className="glass-card rounded-xl overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5">
@@ -52,35 +60,42 @@ export default function RoomCard({ room, isMember, onJoin, onLeave }: RoomCardPr
           </div>
         </div>
 
+        {/* Active Challenge */}
+        {activeChallenge && (
+          <div className="flex items-center gap-2 text-[11px] text-foreground bg-amber-50 rounded-lg px-2.5 py-1.5 mb-3">
+            <FiFlag className="w-3 h-3 text-amber-600 flex-shrink-0" />
+            <span className="truncate">{activeChallenge.title}</span>
+            <span className="text-[10px] text-muted-foreground ml-auto flex-shrink-0">{participants.length} joined</span>
+          </div>
+        )}
+
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Badge variant="outline" className={`text-[10px] px-2 py-0 border ${categoryColors[room.category] ?? 'bg-gray-50 text-gray-600 border-gray-200'}`}>
               {room.category}
             </Badge>
+            <Badge className={`text-[9px] px-1.5 py-0 ${typeColors[room.type] ?? typeColors.community}`}>
+              {room.type}
+            </Badge>
             <span className="text-[11px] text-muted-foreground flex items-center gap-1">
               <FiUsers className="w-3 h-3" />
-              {room.memberCount} members
+              {room.memberCount}
             </span>
           </div>
           {isMember ? (
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 text-[11px] rounded-lg"
-              onClick={(e) => { e.preventDefault(); onLeave?.() }}
-            >
+            <Button variant="outline" size="sm" className="h-7 text-[11px] rounded-lg" onClick={(e) => { e.preventDefault(); onLeave?.() }}>
               Joined
             </Button>
           ) : (
-            <Button
-              size="sm"
-              className="h-7 text-[11px] rounded-lg gropact-gradient text-white"
-              onClick={(e) => { e.preventDefault(); onJoin?.() }}
-            >
+            <Button size="sm" className="h-7 text-[11px] rounded-lg gropact-gradient text-white" onClick={(e) => { e.preventDefault(); onJoin?.() }}>
               Join
             </Button>
           )}
         </div>
+
+        {room.creatorName && (
+          <p className="text-[10px] text-muted-foreground mt-2">Created by {room.creatorName}</p>
+        )}
       </CardContent>
     </Card>
   )

@@ -1,14 +1,16 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
-import type { Room, RoomPost } from '@/lib/types'
+import type { Room, RoomPost, RoomChallenge } from '@/lib/types'
 import {
   getRooms as storeGetRooms,
-  getRoom as storeGetRoom,
   joinRoom as storeJoin,
   leaveRoom as storeLeave,
   addPost as storeAddPost,
   likePost as storeLikePost,
+  addChallenge as storeAddChallenge,
+  joinChallenge as storeJoinChallenge,
+  updateChallengeProgress as storeUpdateChallengeProgress,
 } from '@/lib/store'
 import { useAuth } from '@/contexts/AuthContext'
 import { generateUUID } from '@/lib/utils'
@@ -22,6 +24,11 @@ interface RoomContextValue {
   addPost: (roomId: string, content: string, type: RoomPost['type']) => void
   likePost: (roomId: string, postId: string) => void
   refreshRooms: () => void
+  addChallenge: (roomId: string, challenge: RoomChallenge) => void
+  joinChallenge: (roomId: string, challengeId: string) => void
+  updateChallengeProgress: (roomId: string, challengeId: string, progress: number) => void
+  getChallengeRooms: () => Room[]
+  getMyActiveChallenges: () => { room: Room; challenge: RoomChallenge }[]
 }
 
 const RoomContext = createContext<RoomContextValue | null>(null)
@@ -82,6 +89,46 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     loadRooms()
   }, [user?.id, loadRooms])
 
+  const handleAddChallenge = useCallback((roomId: string, challenge: RoomChallenge) => {
+    storeAddChallenge(roomId, challenge)
+    loadRooms()
+  }, [loadRooms])
+
+  const handleJoinChallenge = useCallback((roomId: string, challengeId: string) => {
+    if (!user) return
+    storeJoinChallenge(roomId, challengeId, user.id, user.name)
+    loadRooms()
+  }, [user, loadRooms])
+
+  const handleUpdateChallengeProgress = useCallback((roomId: string, challengeId: string, progress: number) => {
+    if (!user?.id) return
+    storeUpdateChallengeProgress(roomId, challengeId, user.id, progress)
+    loadRooms()
+  }, [user?.id, loadRooms])
+
+  const getChallengeRooms = useCallback(() => {
+    return rooms.filter(r => {
+      const challenges = Array.isArray(r.challenges) ? r.challenges : []
+      return challenges.some(c => c.status === 'active')
+    })
+  }, [rooms])
+
+  const getMyActiveChallenges = useCallback(() => {
+    if (!user?.id) return []
+    const result: { room: Room; challenge: RoomChallenge }[] = []
+    for (const room of rooms) {
+      const challenges = Array.isArray(room.challenges) ? room.challenges : []
+      for (const challenge of challenges) {
+        if (challenge.status !== 'active') continue
+        const participants = Array.isArray(challenge.participants) ? challenge.participants : []
+        if (participants.some(p => p.userId === user.id)) {
+          result.push({ room, challenge })
+        }
+      }
+    }
+    return result
+  }, [rooms, user?.id])
+
   return (
     <RoomContext.Provider value={{
       rooms,
@@ -92,6 +139,11 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       addPost: handleAddPost,
       likePost: handleLikePost,
       refreshRooms: loadRooms,
+      addChallenge: handleAddChallenge,
+      joinChallenge: handleJoinChallenge,
+      updateChallengeProgress: handleUpdateChallengeProgress,
+      getChallengeRooms,
+      getMyActiveChallenges,
     }}>
       {children}
     </RoomContext.Provider>

@@ -18,9 +18,17 @@ import type { Pact, AIPlanOutput, Supporter } from '@/lib/types'
 import {
   FiArrowLeft, FiArrowRight, FiCheck, FiPlus, FiTrash2,
   FiTarget, FiUsers, FiActivity, FiCalendar, FiStar,
+  FiShield, FiCamera, FiEdit,
 } from 'react-icons/fi'
 
 const CATEGORIES = ['Fitness', 'Learning', 'Creative', 'Wellness', 'Career', 'Finance', 'Social', 'Other']
+
+const VERIFICATION_METHODS = [
+  { value: 'photo' as const, label: 'Photo Proof', icon: FiCamera, desc: 'Upload photos as evidence' },
+  { value: 'supporter' as const, label: 'Supporter Confirm', icon: FiUsers, desc: 'A supporter verifies your progress' },
+  { value: 'self' as const, label: 'Self Report', icon: FiEdit, desc: 'Report your own progress honestly' },
+  { value: 'mixed' as const, label: 'Mixed Methods', icon: FiShield, desc: 'Combine multiple verification types' },
+]
 
 function detectCategory(title: string, description: string): string {
   const text = (title + ' ' + description).toLowerCase()
@@ -39,29 +47,33 @@ function NewPactContent() {
   const { createPact, pacts } = usePacts()
 
   const [step, setStep] = useState(1)
-  const totalSteps = 5
+  const totalSteps = 6
 
-  // Step 1
+  // Step 1: Identity
   const [identityStatement, setIdentityStatement] = useState('')
   const [whyItMatters, setWhyItMatters] = useState('')
 
-  // Step 2
+  // Step 2: Goal Definition
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
 
-  // Step 3
-  const [supporters, setSupporters] = useState<{ name: string; feedback: string }[]>([
-    { name: '', feedback: '' },
+  // Step 3: Verification Method
+  const [verificationMethod, setVerificationMethod] = useState<'photo' | 'supporter' | 'self' | 'mixed'>('self')
+
+  // Step 4: Supporters
+  const [supporters, setSupporters] = useState<{ name: string; feedback: string; email: string; role: Supporter['role'] }[]>([
+    { name: '', feedback: '', email: '', role: 'all' },
   ])
 
-  // Step 4
+  // Step 5: AI Goal Architect
   const [aiPlan, setAiPlan] = useState<AIPlanOutput | null>(null)
 
   const detectedCategory = detectCategory(title, description)
   const activeCategory = category || detectedCategory
+  const tier = user?.tier ?? 'free'
 
   const canNext = (): boolean => {
     switch (step) {
@@ -70,19 +82,20 @@ function NewPactContent() {
       case 3: return true
       case 4: return true
       case 5: return true
+      case 6: return true
       default: return false
     }
   }
 
   const addSupporter = () => {
-    setSupporters(prev => [...prev, { name: '', feedback: '' }])
+    setSupporters(prev => [...prev, { name: '', feedback: '', email: '', role: 'all' }])
   }
 
   const removeSupporter = (index: number) => {
     setSupporters(prev => prev.filter((_, i) => i !== index))
   }
 
-  const updateSupporter = (index: number, field: 'name' | 'feedback', value: string) => {
+  const updateSupporter = (index: number, field: string, value: string) => {
     setSupporters(prev => prev.map((s, i) => i === index ? { ...s, [field]: value } : s))
   }
 
@@ -95,11 +108,16 @@ function NewPactContent() {
 
     const pactSupporters: Supporter[] = supporters
       .filter(s => s.name.trim())
-      .map((s, i) => ({
+      .map((s) => ({
         id: 'sup-' + generateUUID().slice(0, 8),
         name: s.name.trim(),
+        email: s.email.trim() || undefined,
         feedback: s.feedback.trim(),
         addedDate: new Date().toISOString(),
+        trustScore: 50,
+        verificationsCompleted: 0,
+        encouragementsSent: 0,
+        role: s.role,
       }))
 
     const newPact: Pact = {
@@ -124,20 +142,24 @@ function NewPactContent() {
       completionRate: 0,
       behavioralState: aiPlan?.behavioralState,
       identityAffirmation: aiPlan?.identityAffirmation,
+      verificationMethod,
+      verifications: [],
+      weeklyReflections: [],
+      progressCards: [],
     }
 
     createPact(newPact)
     router.push(`/pacts/${newPact.id}`)
   }
 
-  // Gather recent check-in notes
   const recentCheckIns = pacts
     .flatMap(p => Array.isArray(p.checkIns) ? p.checkIns : [])
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
     .slice(0, 5)
     .map(ci => ci.note || 'Check-in recorded')
 
-  const stepIcons = [FiStar, FiTarget, FiUsers, FiActivity, FiCheck]
+  const stepLabels = ['Identity', 'Goal', 'Verification', 'Supporters', 'AI Plan', 'Review']
+  const stepIcons = [FiStar, FiTarget, FiShield, FiUsers, FiActivity, FiCheck]
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 fade-in-up">
@@ -147,7 +169,7 @@ function NewPactContent() {
         </Button>
         <div className="flex-1">
           <h1 className="text-xl font-bold text-foreground">Create New Pact</h1>
-          <p className="text-xs text-muted-foreground">Step {step} of {totalSteps}</p>
+          <p className="text-xs text-muted-foreground">Step {step} of {totalSteps} - {stepLabels[step - 1]}</p>
         </div>
       </div>
 
@@ -164,6 +186,7 @@ function NewPactContent() {
                 key={i}
                 onClick={() => { if (i + 1 <= step) setStep(i + 1) }}
                 className={`w-8 h-8 rounded-full flex items-center justify-center text-xs transition-all ${completed ? 'bg-[#00C4CC] text-white' : current ? 'bg-[#00C4CC]/20 text-[#00C4CC] border-2 border-[#00C4CC]' : 'bg-muted text-muted-foreground'}`}
+                title={stepLabels[i]}
               >
                 {completed ? <FiCheck className="w-3.5 h-3.5" /> : <StepIcon className="w-3.5 h-3.5" />}
               </button>
@@ -277,8 +300,50 @@ function NewPactContent() {
         </Card>
       )}
 
-      {/* Step 3: Supporters */}
+      {/* Step 3: Verification Method */}
       {step === 3 && (
+        <Card className="glass-card rounded-xl">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <FiShield className="w-4 h-4 text-[#00C4CC]" />
+              Verification Method
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-xs text-muted-foreground">Choose how you will verify your progress. This builds trust and accountability.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {VERIFICATION_METHODS.map((method) => {
+                const Icon = method.icon
+                const isSelected = verificationMethod === method.value
+                return (
+                  <button
+                    key={method.value}
+                    onClick={() => setVerificationMethod(method.value)}
+                    className={`p-4 rounded-xl border text-left transition-all ${isSelected ? 'border-[#00C4CC] bg-[#00C4CC]/5 shadow-md' : 'border-border hover:border-foreground/30'}`}
+                  >
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <Icon className={`w-4 h-4 ${isSelected ? 'text-[#00C4CC]' : 'text-muted-foreground'}`} />
+                      <span className={`text-sm font-medium ${isSelected ? 'text-[#00C4CC]' : 'text-foreground'}`}>{method.label}</span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">{method.desc}</p>
+                    {isSelected && (
+                      <FiCheck className="w-4 h-4 text-[#00C4CC] mt-2" />
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+            <div className="p-3 rounded-lg bg-muted/30 border border-border/50">
+              <p className="text-[10px] text-muted-foreground">
+                <strong>Tip:</strong> Photo proof and supporter confirmation build the highest trust scores. Self-report is easiest but contributes less to your Trust Score.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Step 4: Supporters */}
+      {step === 4 && (
         <Card className="glass-card rounded-xl">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
@@ -297,6 +362,13 @@ function NewPactContent() {
                     onChange={(e) => updateSupporter(index, 'name', e.target.value)}
                     className="rounded-xl bg-background/50 h-8 text-xs"
                   />
+                  <Input
+                    placeholder="Email (optional)"
+                    type="email"
+                    value={supporter.email}
+                    onChange={(e) => updateSupporter(index, 'email', e.target.value)}
+                    className="rounded-xl bg-background/50 h-8 text-xs"
+                  />
                   <Textarea
                     placeholder="Their observations, feedback, or advice..."
                     value={supporter.feedback}
@@ -304,6 +376,20 @@ function NewPactContent() {
                     rows={2}
                     className="rounded-xl bg-background/50 text-xs resize-none"
                   />
+                  <div>
+                    <p className="text-[10px] text-muted-foreground mb-1">Role</p>
+                    <div className="flex flex-wrap gap-1">
+                      {(['accountability', 'encourager', 'verifier', 'all'] as const).map(role => (
+                        <button
+                          key={role}
+                          onClick={() => updateSupporter(index, 'role', role)}
+                          className={`px-2 py-0.5 rounded-lg text-[10px] font-medium border transition-all capitalize ${supporter.role === role ? 'border-[#00C4CC] bg-[#00C4CC]/5 text-[#00C4CC]' : 'border-border text-muted-foreground'}`}
+                        >
+                          {role}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
                 {supporters.length > 1 && (
                   <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive flex-shrink-0" onClick={() => removeSupporter(index)}>
@@ -320,16 +406,26 @@ function NewPactContent() {
         </Card>
       )}
 
-      {/* Step 4: AI Goal Architect */}
-      {step === 4 && (
+      {/* Step 5: AI Goal Architect */}
+      {step === 5 && (
         <Card className="glass-card rounded-xl">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <FiActivity className="w-4 h-4 text-[#00C4CC]" />
               AI Goal Architect
+              {tier === 'free' && (
+                <Badge className="text-[9px] bg-amber-100 text-amber-700">Limited on Free</Badge>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent>
+            {tier === 'free' && (
+              <div className="mb-4 p-3 rounded-lg bg-amber-50 border border-amber-200/50">
+                <p className="text-xs text-amber-800">
+                  <strong>Free tier:</strong> You get basic goal breakdown. Upgrade to Growth ($4.99/mo) or Pro ($9.99/mo) for advanced behavioral analysis, supporter insights, and detailed weekly plans.
+                </p>
+              </div>
+            )}
             <AIGoalArchitect
               pactTitle={title}
               pactDescription={description + (whyItMatters ? '\n\nWhy it matters: ' + whyItMatters : '')}
@@ -351,8 +447,8 @@ function NewPactContent() {
         </Card>
       )}
 
-      {/* Step 5: Review */}
-      {step === 5 && (
+      {/* Step 6: Review */}
+      {step === 6 && (
         <Card className="glass-card rounded-xl">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
@@ -365,6 +461,9 @@ function NewPactContent() {
               <div className="p-3 rounded-lg bg-muted/50">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-0.5">Identity</p>
                 <p className="text-sm text-foreground">{identityStatement}</p>
+                {whyItMatters && (
+                  <p className="text-xs text-muted-foreground mt-1 italic">{whyItMatters}</p>
+                )}
               </div>
 
               <div className="p-3 rounded-lg bg-muted/50">
@@ -373,24 +472,29 @@ function NewPactContent() {
                 {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Badge variant="outline" className="text-xs">{activeCategory}</Badge>
                 <Badge variant="outline" className="text-xs">
                   <FiCalendar className="w-3 h-3 mr-1" />
                   {startDate} to {endDate}
+                </Badge>
+                <Badge variant="outline" className="text-xs gap-1">
+                  <FiShield className="w-3 h-3" />
+                  {VERIFICATION_METHODS.find(m => m.value === verificationMethod)?.label ?? verificationMethod}
                 </Badge>
               </div>
 
               {supporters.filter(s => s.name.trim()).length > 0 && (
                 <div className="p-3 rounded-lg bg-muted/50">
                   <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-1">Supporters</p>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     {supporters.filter(s => s.name.trim()).map((s, i) => (
                       <div key={i} className="flex items-center gap-1">
                         <div className="w-6 h-6 rounded-full bg-[#00C4CC]/15 flex items-center justify-center text-[10px] font-semibold text-[#00C4CC]">
                           {s.name[0]?.toUpperCase()}
                         </div>
                         <span className="text-xs text-foreground">{s.name}</span>
+                        <Badge variant="outline" className="text-[8px] px-1 py-0 capitalize">{s.role}</Badge>
                       </div>
                     ))}
                   </div>
